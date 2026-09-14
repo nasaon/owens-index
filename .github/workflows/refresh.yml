@@ -1,4 +1,4 @@
-# 매일 공식몰 데이터를 새로 받아 public/data.js를 커밋 (커밋되면 Cloudflare Pages가 다시 배포)
+# 매일 공식몰 데이터를 새로 받아 public/data.js를 커밋
 name: refresh-data
 on:
   schedule:
@@ -6,14 +6,13 @@ on:
   workflow_dispatch:
 permissions:
   contents: write
-concurrency: refresh-data
 jobs:
   refresh:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
-      - uses: actions/checkout@v5
-      - uses: actions/setup-node@v5
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
         with:
           node-version: 24
       - run: node build.mjs

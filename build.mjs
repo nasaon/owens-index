@@ -61,7 +61,8 @@ const [men, women, kids, menBottoms, womenBottoms] = [await ids('mens-all'), awa
 const COLLABS = { Moncler: 'collab-moncler', Champion: 'champion', Converse: 'converse-x-drkshdw', 'Dr. Martens': 'dr-martens', Selahatin: 'selahatin-x-rick-owens', Livy: 'livy-x-rick-owens' };
 const collabs = {};
 for (const [name, handle] of Object.entries(COLLABS)) collabs[name] = await ids(handle);
-const [runway, lilies] = [await ids('homepage-runway-pieces'), await ids('line-lilies')];
+// 라인은 공식몰 DRKSHDW·LILIES 컬렉션 기준 (설명 첫 단어로 판단하면 30개쯤 빠짐)
+const [runway, lilies, drkshdw] = [await ids('homepage-runway-pieces'), await ids('line-lilies'), await ids('drkshdw-1')];
 
 const items = [];
 for (const p of all) {
@@ -78,8 +79,8 @@ for (const p of all) {
     id: p.handle,
     code: segs[0] || '',
     color: segs.length > 1 ? segs.at(-1) : '',
-    name: namePart.trim(),
-    line: /^DRKSHDW\b/.test(text) ? 'DRKSHDW' : lilies.has(p.id) ? 'LILIES' : 'RICK OWENS',
+    name: namePart.trim().replace(/Â(?=[®©™])/g, ''), // 공식몰 제목에 섞인 깨진 글자 (MEGALACEÂ®)
+    line: drkshdw.has(p.id) ? 'DRKSHDW' : lilies.has(p.id) ? 'LILIES' : 'RICK OWENS',
     collab: Object.keys(collabs).find((name) => collabs[name].has(p.id)) ?? '',
     runway: runway.has(p.id) || p.tags.includes('RUNWAY PIECES'),
     season: text.match(/\b(SS|FW|PF|RS)\d{2}\b/)?.[0] ?? '',

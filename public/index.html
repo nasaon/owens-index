@@ -4,11 +4,11 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>OWENS INDEX</title>
-<meta name="description" content="릭오웬스 공식몰 상품을 남성·여성, 상의·하의, 시즌·협업·핏별로 모아 보는 비공식 인덱스.">
+<meta name="description" content="릭오웬스 공식몰 상품을 남성·여성, 상의·하의, 시즌·협업·핏·사이즈별로 모아 보는 비공식 인덱스.">
 <meta name="theme-color" content="#000000">
 <meta property="og:type" content="website">
 <meta property="og:title" content="OWENS INDEX">
-<meta property="og:description" content="릭오웬스 전 상품을 시즌·협업·핏까지 한눈에. 비공식 팬 인덱스.">
+<meta property="og:description" content="릭오웬스 전 상품을 시즌·협업·핏·사이즈까지 한눈에. 비공식 팬 인덱스.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14'/%3E%3Ctext x='32' y='43' font-family='Arial' font-size='28' font-weight='700' fill='white' text-anchor='middle'%3EOI%3C/text%3E%3C/svg%3E">
 <style>
   :root {
@@ -164,6 +164,9 @@
   .pill { border: 1px solid #3a3a3c; border-radius: 999px; padding: 7px 14px; font-size: 13px; }
   .size { min-width: 52px; padding: 11px 12px; border: 1px solid #48484a; border-radius: 12px; text-align: center; font-size: 13px; }
   .size.out { color: #4a4a4c; border-color: #1f1f21; text-decoration: line-through; }
+  .size.pick { background: var(--fg); color: #000; border-color: var(--fg); }
+  .acts { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+  .acts .chip { padding: 15px 22px; font-size: 14px; }
   .buy { display: inline-flex; align-items: center; justify-content: center; gap: 10px; background: var(--fg); color: #000; text-decoration: none; font-weight: 600;
     padding: 16px 26px; border-radius: 999px; transition: transform .4s var(--ease), opacity .3s; }
   .buy:hover { transform: scale(1.03); }
@@ -264,21 +267,22 @@
     <div class="row">
       <div class="seg" id="gender"></div>
       <div class="seg" id="line"></div>
-      <input class="search" id="q" type="search" placeholder="이름, 품번, 시즌, 핏 검색" autocomplete="off">
+      <input class="search" id="q" type="search" placeholder="이름, 품번, 시즌, 핏 검색" aria-label="검색" autocomplete="off">
     </div>
     <div class="row">
       <div id="groupChips" style="display:flex;gap:8px"></div>
-      <select class="chip" id="season"></select>
-      <select class="chip" id="collab"></select>
-      <select class="chip" id="fit"></select>
+      <select class="chip" id="size" aria-label="사이즈"></select>
+      <select class="chip" id="season" aria-label="시즌"></select>
+      <select class="chip" id="collab" aria-label="협업"></select>
+      <select class="chip" id="fit" aria-label="핏"></select>
       <button class="chip" id="runway">런웨이 피스</button>
       <button class="chip on" id="stock">재고 있는 것만</button>
-      <select class="chip" id="sort">
+      <select class="chip" id="sort" aria-label="정렬">
         <option value="new">신상품순</option>
         <option value="low">낮은 가격순</option>
         <option value="high">높은 가격순</option>
       </select>
-      <span class="count" id="count"></span>
+      <span class="count" id="count" aria-live="polite"></span>
     </div>
   </div>
   <div class="grid" id="grid"></div>
@@ -287,7 +291,7 @@
 
 <div class="sheet" id="sheet" aria-hidden="true">
   <div class="bg" data-close></div>
-  <article class="panel" role="dialog" aria-modal="true">
+  <article class="panel" role="dialog" aria-modal="true" aria-labelledby="sName">
     <button class="close" data-close aria-label="닫기">×</button>
     <div class="gallery" id="sGallery"></div>
     <div class="info">
@@ -300,7 +304,7 @@
       <div><h4>분류</h4><div class="pills" id="sCat"></div></div>
       <div id="sFitWrap"><h4>핏 · 기장</h4><div class="pills" id="sFit"></div></div>
       <div><h4>사이즈</h4><div class="sizes" id="sSizes"></div></div>
-      <div><a class="buy" id="sBuy" target="_blank" rel="noopener">공식몰에서 보기 ↗</a></div>
+      <div class="acts"><a class="buy" id="sBuy" target="_blank" rel="noopener">공식몰에서 보기 ↗</a><button class="chip" id="sShare">공유하기</button></div>
     </div>
   </article>
 </div>
@@ -350,16 +354,22 @@
     ['2021–', 'Dr. Martens', '부츠와 신발 협업이에요.'],
   ];
 
-  const state = { gender: 'all', line: 'all', group: 'all', season: '', collab: '', fit: '', runway: false, sort: 'new', stock: true, q: '' };
+  const state = { gender: 'all', line: 'all', group: 'all', size: '', season: '', collab: '', fit: '', runway: false, sort: 'new', stock: true, q: '' };
+  const DEFAULTS = { ...state };
   const inStock = (it) => it.sizes.some(([, ok]) => ok);
   const live = DATA.items.filter(inStock);
   const countBy = (key, value) => live.filter((it) => it[key] === value).length;
+  // 데이터 갱신일 기준 1주 안에 올라온 상품은 NEW (2주면 전체의 18%라 의미가 없음)
+  const NEW_SINCE = DATA.updated ? new Date(Date.parse(DATA.updated) - 7 * 864e5).toISOString().slice(0, 10) : '9999';
+  // 사이즈 정렬: 원사이즈 → XXS~XXXL → 숫자(39½ 포함)
+  const LETTERS = ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
+  const sizeRank = (s) => (s === 'UNI' ? -1 : LETTERS.includes(s) ? LETTERS.indexOf(s) : 100 + (parseFloat(s.replace('½', '.5')) || 900));
 
   // 히어로 글자
   $('#heroTitle').innerHTML = [...'RICK OWENS'].map((c, i) => `<span class="clip"><span class="ch" style="--i:${i}">${c === ' ' ? '&nbsp;' : c}</span></span>`).join('');
 
   // 스크롤 문장 (단어 단위로 밝아짐)
-  const statement = `${fmt.format(DATA.items.length)}개의 피스. 상의부터 액세서리까지, 시즌과 협업, 핏과 기장까지. 전부 한 곳에서.`;
+  const statement = `${fmt.format(DATA.items.length)}개의 피스. 상의부터 액세서리까지, 시즌과 협업, 핏과 사이즈까지. 전부 한 곳에서.`;
   $('#statement').innerHTML = statement.split(' ').map((w) => `<span class="w">${esc(w)}</span>`).join(' ');
   const words = [...document.querySelectorAll('.statement .w')];
 
@@ -382,11 +392,12 @@
   addEventListener('scroll', () => { if (!ticking) { ticking = true; requestAnimationFrame(onScroll); } }, { passive: true });
   onScroll();
 
+  // 섹션에서 카탈로그로 이동할 때는 정렬·재고 설정만 남기고 필터를 새로
   let qTimer;
   const toCatalog = (patch) => {
     clearTimeout(qTimer);
     $('#q').value = '';
-    setState({ gender: 'all', line: 'all', group: 'all', season: '', collab: '', fit: '', runway: false, q: '', ...patch });
+    setState({ ...DEFAULTS, sort: state.sort, stock: state.stock, ...patch });
     $('#catalog').scrollIntoView();
   };
 
@@ -442,7 +453,7 @@
   $('#season').innerHTML = options(seasonsInData, '시즌 전체', seasonLabel);
   $('#collab').innerHTML = options(collabNames, '협업 전체');
   $('#fit').innerHTML = options([...new Set(DATA.items.flatMap((it) => it.fit))].sort((a, b) => a.localeCompare(b, 'ko')), '핏 전체');
-  for (const key of ['season', 'collab', 'fit', 'sort']) $(`#${key}`).onchange = (e) => setState({ [key]: e.target.value });
+  for (const key of ['size', 'season', 'collab', 'fit', 'sort']) $(`#${key}`).onchange = (e) => setState({ [key]: e.target.value });
   $('#runway').onclick = () => setState({ runway: !state.runway });
   $('#stock').onclick = () => setState({ stock: !state.stock });
   $('#q').oninput = (e) => { clearTimeout(qTimer); qTimer = setTimeout(() => setState({ q: e.target.value }), 150); };
@@ -455,12 +466,27 @@
   function setState(patch) {
     Object.assign(state, patch);
     for (const [id, key] of [['#gender', 'gender'], ['#line', 'line'], ['#groupChips', 'group']]) {
-      document.querySelectorAll(`${id} [data-v]`).forEach((b) => b.classList.toggle('on', b.dataset.v === state[key]));
+      document.querySelectorAll(`${id} [data-v]`).forEach((b) => {
+        b.classList.toggle('on', b.dataset.v === state[key]);
+        b.setAttribute('aria-pressed', b.dataset.v === state[key]);
+      });
     }
     for (const key of ['season', 'collab', 'fit', 'sort']) $(`#${key}`).value = state[key];
-    $('#runway').classList.toggle('on', state.runway);
-    $('#stock').classList.toggle('on', state.stock);
+    for (const key of ['runway', 'stock']) {
+      $(`#${key}`).classList.toggle('on', state[key]);
+      $(`#${key}`).setAttribute('aria-pressed', state[key]);
+    }
     render();
+    syncUrl();
+  }
+
+  // 필터와 열린 상품을 주소에 담아서 링크로 공유할 수 있게
+  function syncUrl() {
+    const p = new URLSearchParams();
+    for (const [key, v] of Object.entries(state)) if (v !== DEFAULTS[key]) p.set(key, typeof v === 'boolean' ? Number(v) : v);
+    if (current) p.set('item', current.id);
+    const qs = String(p);
+    try { history.replaceState(null, '', qs ? `?${qs}` : location.pathname); } catch { /* file:// 에서는 주소를 못 바꿈 */ }
   }
 
   // 목록
@@ -469,7 +495,7 @@
   let shown = 0;
   function render() {
     const q = state.q.trim().toLowerCase();
-    list = DATA.items.filter((it) =>
+    const base = DATA.items.filter((it) =>
       (state.gender === 'all' || it.gender === state.gender || it.gender === 'u') &&
       (state.line === 'all' || it.line === state.line) &&
       (state.group === 'all' || it.group === state.group) &&
@@ -479,6 +505,12 @@
       (!state.runway || it.runway) &&
       (!state.stock || inStock(it)) &&
       (!q || `${it.name} ${it.code} ${it.category} ${it.fit.join(' ')} ${seasonLabel(it.season)} ${it.collab} ${it.line}`.toLowerCase().includes(q)));
+    // 사이즈 목록은 나머지 조건에 맞는 상품에 있는 사이즈만 (재고만 보기면 재고 있는 사이즈만)
+    const sizes = [...new Set(base.flatMap((it) => it.sizes.filter(([, ok]) => ok || !state.stock).map(([s]) => s)))].sort((a, b) => sizeRank(a) - sizeRank(b));
+    if (state.size && !sizes.includes(state.size)) sizes.unshift(state.size);
+    $('#size').innerHTML = options(sizes, '사이즈 전체');
+    $('#size').value = state.size;
+    list = state.size ? base.filter((it) => it.sizes.some(([s, ok]) => s === state.size && (ok || !state.stock))) : base;
     list.sort(SORTS[state.sort]);
     $('#grid').innerHTML = list.length ? '' : '<p class="empty">조건에 맞는 상품이 없어요.</p>';
     shown = 0;
@@ -497,7 +529,12 @@
     const el = document.createElement('button');
     el.className = 'card reveal';
     el.style.setProperty('--d', `${(i % 4) * 60}ms`);
-    const tags = [it.runway && '<span class="tag w">RUNWAY</span>', it.collab && `<span class="tag">× ${esc(it.collab.toUpperCase())}</span>`, !inStock(it) && '<span class="tag">SOLD OUT</span>'].filter(Boolean).join('');
+    const tags = [
+      it.added >= NEW_SINCE && '<span class="tag w">NEW</span>',
+      it.runway && '<span class="tag w">RUNWAY</span>',
+      it.collab && `<span class="tag">× ${esc(it.collab.toUpperCase())}</span>`,
+      !inStock(it) && '<span class="tag">SOLD OUT</span>',
+    ].filter(Boolean).join('');
     el.innerHTML = `<div class="ph">${tags ? `<div class="tags">${tags}</div>` : ''}${it.images[0] ? `<img class="a" src="${sized(it.images[0], 600)}" loading="lazy" decoding="async" alt="">` : ''}</div>
       <div class="meta"><span>${esc(it.name)}</span><span class="pr">${money(it)}</span></div>
       <div class="sub">${[it.category, GENDER[it.gender], seasonLabel(it.season), ...it.fit.slice(0, 2)].filter(Boolean).map(esc).join(' · ')}</div>`;
@@ -518,7 +555,11 @@
   }
 
   // 상세
+  let current = null;
+  let lastFocus = null;
   function openSheet(it) {
+    current = it;
+    lastFocus = document.activeElement;
     $('#sGallery').innerHTML = it.images.map((s) => `<img src="${sized(s, 1100)}" loading="lazy" alt="">`).join('');
     $('#sLine').textContent = [it.line, seasonLabel(it.season)].filter(Boolean).join(' · ');
     $('#sName').textContent = it.name;
@@ -528,23 +569,49 @@
     const fit = [...it.fit, ...it.details];
     $('#sFitWrap').hidden = !fit.length;
     $('#sFit').innerHTML = fit.map((t) => `<span class="pill">${esc(t)}</span>`).join('');
-    $('#sSizes').innerHTML = it.sizes.map(([s, ok]) => `<span class="size${ok ? '' : ' out'}">${esc(s)}</span>`).join('');
+    $('#sSizes').innerHTML = it.sizes.map(([s, ok]) => `<span class="size${ok ? '' : ' out'}${s === state.size ? ' pick' : ''}">${esc(s)}</span>`).join('');
     $('#sBuy').href = productUrl(it);
+    $('#sShare').textContent = '공유하기';
     $('#sheet').classList.add('open');
     $('#sheet').setAttribute('aria-hidden', 'false');
     document.body.classList.add('lock');
     $('#sGallery').scrollTo(0, 0);
+    $('.panel .close').focus({ preventScroll: true });
+    syncUrl();
   }
   function closeSheet() {
+    if (!current) return;
+    current = null;
     $('#sheet').classList.remove('open');
     $('#sheet').setAttribute('aria-hidden', 'true');
     document.body.classList.remove('lock');
+    lastFocus?.focus({ preventScroll: true });
+    syncUrl();
   }
   document.querySelectorAll('[data-close]').forEach((el) => el.onclick = closeSheet);
   addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSheet(); });
+  $('#sShare').onclick = async () => {
+    try {
+      // 휴대폰은 기본 공유 창(카카오톡 등), 컴퓨터는 링크 복사
+      if (navigator.share && matchMedia('(pointer: coarse)').matches) await navigator.share({ title: `${current.name} · OWENS INDEX`, url: location.href });
+      else { await navigator.clipboard.writeText(location.href); $('#sShare').textContent = '링크 복사됨'; }
+    } catch { /* 공유 창을 그냥 닫은 경우 */ }
+  };
 
   $('#updated').textContent = DATA.updated ? `데이터 업데이트: ${new Date(DATA.updated).toLocaleString('ko-KR')}` : '데이터가 없어요. node build.mjs를 먼저 실행해주세요.';
-  setState({});
+
+  // 공유 링크로 들어오면 필터와 상품을 그대로 복원
+  const params = new URLSearchParams(location.search);
+  const initial = {};
+  for (const key of Object.keys(DEFAULTS)) {
+    if (params.has(key)) initial[key] = typeof DEFAULTS[key] === 'boolean' ? params.get(key) === '1' : params.get(key);
+  }
+  if (!SORTS[initial.sort]) delete initial.sort;
+  $('#q').value = initial.q ?? '';
+  setState(initial);
+  const shared = DATA.items.find((it) => it.id === params.get('item'));
+  if (shared) openSheet(shared);
+  else if (Object.keys(initial).length) $('#catalog').scrollIntoView({ behavior: 'instant' });
 </script>
 </body>
 </html>
