@@ -1,4 +1,4 @@
-# 매일 공식몰 데이터를 새로 받아 public/data.js를 커밋
+# 매일 공식몰·판매처 데이터를 새로 받아 public/data.js를 커밋
 name: refresh-data
 on:
   schedule:
