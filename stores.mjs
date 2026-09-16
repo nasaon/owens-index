@@ -26,10 +26,10 @@ export const normColor = (c) => String(c).toUpperCase().replace(/^0+(?=.)/, '');
 // 색상 이름 표기 차이 맞추기: 모음을 빼고 비교 (DRKPEARL = Dark Pearl)
 const cleanName = (s) => String(s ?? '').toUpperCase().replace(/[^A-Z]/g, '').replace(/[AEIOU]/g, '');
 
-// 사이즈 표기 정리: 'Size EU 52' → 52, 'wshoeseu_EU 36' → 36, '40-구매가능(당일발송)' → 40, 39.5 → 39½ (공식몰 표기)
+// 사이즈 표기 정리: 'Size EU 52' → 52, 'Size US L' → L, 'wshoeseu_EU 36' → 36, '40-구매가능(당일발송)' → 40, 39.5·6,5 → 39½·6½ (공식몰 표기)
 export function cleanSize(s) {
-  const t = String(s ?? '').replace(/^[a-z]+_/, '').replace(/^(size\s+)?(EU|IT|FR|UK)\s+/i, '').replace(/-.*$/, '').trim();
-  return /^(default title|os|one ?size|o\/s|uni|tu)$/i.test(t) ? 'UNI' : t.replace(/\.5$/, '½');
+  const t = String(s ?? '').replace(/^[a-z]+_/, '').replace(/^size\s+/i, '').replace(/^(EU|IT|FR|UK)\s+|^US\s+(?=(X{0,2}S|M|X{0,3}L)$)/i, '').replace(/-.*$/, '').trim();
+  return /^(default title|os|one ?size|o\/s|uni|tu)?$/i.test(t) ? 'UNI' : t.replace(/[.,]5$/, '½'); // 사이즈 없음 = 원사이즈
 }
 
 // 공식몰에 없는 상품의 분류 (판매처 상품 종류 + 이름, 영어·한국어)
@@ -224,6 +224,16 @@ export const STORES = [
     collect: () => shopify('https://www.nugnes1920.com', ['rick-owens-man'], (p) => ({ sku: p.body_html?.match(/SKU:\s*([A-Z0-9]+)/)?.[1] })) },
   { id: 'thahab', name: 'THAHAB', where: '쿠웨이트', currency: 'KWD', home: 'https://www.thahab.com/collections/rick-owens',
     collect: () => shopify('https://www.thahab.com', ['rick-owens', 'rick-owens-drkshdw'], (p, v) => ({ sku: v.sku, colorName: v.sku.match(/[-_]\d+[ _]([A-Za-z ]+)/)?.[1] })) },
+  { id: 'amamaniere', name: 'A Ma Maniére', where: '미국', currency: 'USD', home: 'https://www.a-ma-maniere.com/collections/rick-owens',
+    collect: () => shopify('https://www.a-ma-maniere.com', ['rick-owens', 'drkshdw'], (p, v) => ({ sku: v.sku })) }, // 'RU02F4360-TB-34'
+  { id: 'gate194', name: 'GATE 194', where: '독일', currency: 'EUR', home: 'https://gate194.berlin/collections/rick-owens',
+    collect: () => shopify('https://gate194.berlin', ['rick-owens'], (p) => ({ sku: p.tags.find((t) => /[A-Z]{2}\d{2}[A-Z]\d{4}/.test(t)) })) }, // 태그 'DS01F4812 SDBK 999'
+  { id: 'baseblu', name: 'Base Blu', where: '이탈리아', currency: 'EUR', home: 'https://www.baseblu.com/collections/rick-owens-man',
+    collect: () => shopify('https://www.baseblu.com', ['rick-owens-man', 'rick-owens-woman', 'moncler-rick-owens-man', 'moncler-rick-owens-woman'],
+      (p) => ({ sku: p.tags.find((t) => t.startsWith('parent_sku:')) })) }, // 태그 'parent_sku:RU02E1749LBY_09'
+  { id: 'grifo210', name: 'Grifo210', where: '이탈리아', currency: 'EUR', home: 'https://www.grifo210.com/collections/men-rick-owens',
+    collect: () => shopify('https://www.grifo210.com', ['men-rick-owens', 'women-rick-owens', 'men-rick-owens-drkshdw', 'women-rick-owens-drkshdw', 'men-moncler-rick-owens', 'women-moncler-rick-owens'],
+      (p, v) => ({ sku: v.sku?.replace(/-[^-]*$/, '') })) }, // 'RU02F4788NPD309-36' → 끝의 사이즈를 떼고 읽음
   { id: 'wiberlux', name: '위버럭스', where: '한국', currency: 'KRW', home: 'https://wiberlux.com/category/rick-owens/4934/', collect: wiberlux },
 ];
 
@@ -239,11 +249,13 @@ export const UNSUPPORTED = [
     ['Giglio', 'https://www.giglio.com/en-us/rick-owens-man.html'], ['Saks', 'https://www.saksfifthavenue.com/brand/rick-owens'],
     ['Neiman Marcus', 'https://www.neimanmarcus.com/c/designers-rick-owens-cat000730'],
   ]],
-  ['robots.txt로 자동 수집 금지', [['젠테스토어', 'https://www.jentestore.com/goods/list?brand%5B%5D=0145']]],
-  ['품번이 없어 같은 상품인지 확정 불가', [['Browns', 'https://www.brownsfashion.com/collections/rick-owens-man']]],
-  ['스크립트로 목록을 채워 아직 못 읽음', [
-    ['Selfridges', 'https://www.selfridges.com/KR/en/cat/rick-owens/'], ['페칭', 'https://fetching.co.kr/brand/62'],
-    ['신세계V', 'https://m.shinsegaev.com/store/rickowens'], ['바바더', 'https://pc.babathe.com/brand/rickowens'],
+  ['robots.txt로 상품 데이터 수집 금지', [
+    ['젠테스토어', 'https://www.jentestore.com/goods/list?brand%5B%5D=0145'], ['신세계V', 'https://m.shinsegaev.com/store/rickowens'],
+    ['Selfridges', 'https://www.selfridges.com/KR/en/cat/rick-owens/'], ['바바더', 'https://pc.babathe.com/brand/rickowens'],
+  ]],
+  ['품번이 없어 같은 상품인지 확정 불가', [
+    ['Browns', 'https://www.brownsfashion.com/collections/rick-owens-man'],
+    ['페칭 · SSENSE·Mytheresa·YOOX 매물을 원화로 모아 봄', 'https://fetching.co.kr/brand/62'],
   ]],
 ];
 export const EXCLUDED = [

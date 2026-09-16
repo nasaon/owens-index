@@ -1,11 +1,7 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "owens-index",
-  "compatibility_date": "2026-09-11",
-  "observability": {
-    "enabled": true
-  },
-  "assets": {
-    "directory": "public"
-  }
+  // Cloudflare Pages(owens-index.pages.dev)로 배포: npx wrangler pages deploy
+  "pages_build_output_dir": "public",
+  "compatibility_date": "2026-09-11"
 }

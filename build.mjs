@@ -122,7 +122,7 @@ const { matched, extra, unsure } = match(items, offers);
 for (const it of items) if (matched.has(it.id)) it.offers = rows(matched.get(it.id));
 
 // 공식몰에 없는 상품(지난 시즌 등): 이름·사진·분류는 판매처 정보로. 이름은 이 순서로 정돈된 곳 것을 씀
-const PREFER = ['lncc', 'end', 'antonioli', 'svrn', 'dsm-ny', 'dsm-london', 'atelier', 'hirshleifers', 'thahab', 'nugnes', 'wiberlux'];
+const PREFER = ['lncc', 'end', 'antonioli', 'amamaniere', 'baseblu', 'svrn', 'dsm-ny', 'dsm-london', 'gate194', 'atelier', 'hirshleifers', 'thahab', 'nugnes', 'grifo210', 'wiberlux'];
 const taken = new Set(items.map((it) => it.id));
 for (const group of extra) {
   group.sort((a, b) => PREFER.indexOf(a.store) - PREFER.indexOf(b.store));

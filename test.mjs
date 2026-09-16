@@ -1,5 +1,6 @@
 // 판매처 품번 읽기·매칭 자체 점검: node test.mjs
 import assert from 'node:assert/strict';
+import { offersFor, sizeKey } from './bot.mjs';
 import { cleanSize, fromCode, kindOf, match, normColor, parseSku } from './stores.mjs';
 
 // 판매처마다 다른 품번 표기
@@ -14,6 +15,7 @@ assert.equal(sku('desc2:RO02F5782'), 'RO02F5782|||'); // DSM 런던: 품번만
 assert.equal(parseSku('2000012286506'), null);
 assert.deepEqual(['09', '0909', '0911', '911'].map(normColor), ['9', '909', '911', '911']);
 assert.deepEqual(['Size EU 52', 'wshoeseu_EU 36', 'wrtwstd_S', '40-구매가능(당일발송)', '39.5', 'Default Title'].map(cleanSize), ['52', '36', 'S', '40', '39½', 'UNI']);
+assert.deepEqual(['Size OS', 'Size US L', 'Size 31', '6,5', 'MENS 9', undefined].map(cleanSize), ['UNI', 'L', '31', '6½', 'MENS 9', 'UNI']);
 
 // 공식몰에 없는 상품의 분류·시즌
 assert.deepEqual(kindOf("Men's Jeans Bolan Bootcut Jeans"), ['bottoms', '하의']);
@@ -42,4 +44,11 @@ assert.deepEqual([...matched].map(([id, os]) => [id, os.map((o) => o.store)]), [
 ]);
 assert.deepEqual(unsure.map((o) => o.store), ['dsm-london']);
 assert.deepEqual(extra.map((g) => g.map((o) => o.store)), [['dsm-ny', 'dsm-london'], ['antonioli']]);
+
+// 관심 상품 알림: 사이즈 글자 → 텔레그램 링크용, 그 사이즈 재고가 있는 곳만 싼 순 (사이즈를 안 알려주는 곳은 따로)
+assert.deepEqual(['39½', 'MENS 9', '50 / US 32', 'UNI'].map(sizeKey), ['39h', 'MENS-9', '50-US-32', 'UNI']);
+const watched = { id: 'a', price: 100, sizes: [['48', true], ['50', false]], offers: [['svrn', 90, 'u1', ['50'], 1, 0], ['end', 80, 'u2', [], 1, 0], ['lncc', 70, 'u3', ['50'], 0, 45]] };
+const at50 = offersFor({ base: 'https://x' }, watched, '50');
+assert.deepEqual([at50.hit.map((r) => r.store), at50.maybe.map((r) => r.store)], [['svrn'], ['end']]);
+assert.deepEqual(offersFor({ base: 'https://x' }, watched, 'all').hit.map((r) => r.store), ['end', 'svrn', 'official']);
 console.log('자체 점검 통과');

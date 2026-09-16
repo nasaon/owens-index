@@ -175,6 +175,8 @@
   .info h4 { font-size: 12px; letter-spacing: .18em; color: var(--mute); font-weight: 600; margin-bottom: 12px; }
   .pills { display: flex; flex-wrap: wrap; gap: 8px; }
   .pill { border: 1px solid #3a3a3c; border-radius: 999px; padding: 6px 13px; font-size: 13px; }
+  a.pill { text-decoration: none; transition: border-color .3s; }
+  a.pill:hover { border-color: var(--fg); }
   .offers { list-style: none; padding: 0; border-top: 1px solid var(--line); }
   .offer { display: grid; grid-template-columns: 1fr auto; gap: 8px 16px; padding: 16px 0; border-bottom: 1px solid var(--line); text-decoration: none; }
   .offer:hover .who b { text-decoration: underline; text-underline-offset: 3px; }
@@ -357,6 +359,7 @@
         <ul class="offers" id="sOffers"></ul>
         <p class="fine" id="sFine"></p>
       </div>
+      <div id="sAlertWrap" hidden><h4>사이즈 알림 · 텔레그램</h4><div class="pills" id="sAlert"></div></div>
       <div><h4>분류</h4><div class="pills" id="sCat"></div></div>
       <div id="sFitWrap"><h4>핏 · 기장</h4><div class="pills" id="sFit"></div></div>
       <div class="acts"><a class="buy" id="sBuy" target="_blank" rel="noopener"></a><button class="chip" id="sShare">공유하기</button></div>
@@ -636,6 +639,15 @@
     return el;
   }
 
+  // 나(운영자)만: ?owner=1로 한 번 들어오면 이 기기에서 텔레그램 사이즈 알림 링크를 보여줌 (노트북의 bot.mjs가 받음)
+  const BOT = 'chdropalert7391bot';
+  const sizeKey = (s) => String(s).replace(/½/g, 'h').replace(/[^A-Za-z0-9]+/g, '-'); // bot.mjs와 같은 규칙
+  let owner = false;
+  try {
+    if (new URLSearchParams(location.search).get('owner') === '1') localStorage.setItem('ro-owner', '1');
+    owner = localStorage.getItem('ro-owner') === '1';
+  } catch { /* 저장소를 못 쓰면 알림 링크 없이 */ }
+
   // 상세
   let current = null;
   let lastFocus = null;
@@ -661,6 +673,9 @@
     const abroad = it.o.some((x) => x.store !== 'official' && STORES[x.store]?.where !== '한국');
     $('#sFine').innerHTML = `${abroad ? '해외 판매처는 관부가세(보통 상품가의 10~25%)와 배송비가 따로 붙을 수 있어요. ' : ''}${it.o.some((x) => x.orig) && fx.date ? `외화 가격은 ${esc(fx.date)} 환율로 바꾼 값이에요. ` : ''}SSENSE처럼 자동 확인이 막힌 곳은 <a href="https://www.google.com/search?udm=28&q=${search}" target="_blank" rel="noopener">Google 쇼핑에서 품번 검색 ↗</a>`;
     $('#sCat').innerHTML = [it.category, GENDER[it.gender], it.collab && `× ${it.collab}`, it.runway && '런웨이 피스', it.ext && '공식몰 미판매'].filter(Boolean).map((t) => `<span class="pill">${esc(t)}</span>`).join('');
+    $('#sAlertWrap').hidden = !owner;
+    if (owner) $('#sAlert').innerHTML = [...[...it.all].sort((a, b) => sizeRank(a) - sizeRank(b)), '전체'].map((z) =>
+      `<a class="pill" href="https://t.me/${BOT}?start=w_${it.id}_${z === '전체' ? 'all' : sizeKey(z)}" target="_blank" rel="noopener">${esc(z)}</a>`).join('');
     const fit = [...it.fit, ...it.details];
     $('#sFitWrap').hidden = !fit.length;
     $('#sFit').innerHTML = fit.map((t) => `<span class="pill">${esc(t)}</span>`).join('');

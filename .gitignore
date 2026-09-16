@@ -5,3 +5,6 @@ node_modules/
 !.dev.vars.example
 .env*
 !.env.example
+daily.log
+bot.log
+watch.json
