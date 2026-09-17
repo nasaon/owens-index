@@ -26,9 +26,15 @@ export const normColor = (c) => String(c).toUpperCase().replace(/^0+(?=.)/, '');
 // 색상 이름 표기 차이 맞추기: 모음을 빼고 비교 (DRKPEARL = Dark Pearl)
 const cleanName = (s) => String(s ?? '').toUpperCase().replace(/[^A-Z]/g, '').replace(/[AEIOU]/g, '');
 
-// 사이즈 표기 정리: 'Size EU 52' → 52, 'Size US L' → L, 'wshoeseu_EU 36' → 36, '40-구매가능(당일발송)' → 40, 39.5·6,5 → 39½·6½ (공식몰 표기)
+// 사이즈 표기를 공식몰 표기로 맞춤: 'Size EU 52' → 52, 'Size US L' → L, 'IT 50 / US 32' → 50, 'wshoeseu_EU 36' → 36,
+// '40-구매가능(당일발송)' → 40, 39.5·6,5 → 39½·6½, LGE·2X → L·XXL, 미국 신발 'MENS 9' → 42 (공식몰 표: 남성 EU = US+33, 여성 EU = US+30)
+const LETTER = { '2X': 'XXL', '2XL': 'XXL', '3X': 'XXXL', '3XL': 'XXXL', LGE: 'L', MED: 'M', SML: 'S', XSM: 'XS' };
 export function cleanSize(s) {
-  const t = String(s ?? '').replace(/^[a-z]+_/, '').replace(/^size\s+/i, '').replace(/^(EU|IT|FR|UK)\s+|^US\s+(?=(X{0,2}S|M|X{0,3}L)$)/i, '').replace(/-.*$/, '').trim();
+  let t = String(s ?? '').replace(/^[a-z]+_/, '').replace(/^size\s+/i, '').replace(/^(EU|IT|FR|UK)\s+|^US\s+(?=(X{0,2}S|M|X{0,3}L)$)/i, '')
+    .replace(/-(?!\d).*$/, '').replace(/\s+[/|]\s+.*$/, '').trim();
+  const us = t.match(/^(MENS|WOMENS)\s+(\d+)([.,]5|½)?$/i);
+  if (us) t = `${Number(us[2]) + (/^w/i.test(us[1]) ? 30 : 33)}${us[3] ? '½' : ''}`;
+  t = LETTER[t.toUpperCase()] ?? t;
   return /^(default title|os|one ?size|o\/s|uni|tu)?$/i.test(t) ? 'UNI' : t.replace(/[.,]5$/, '½'); // 사이즈 없음 = 원사이즈
 }
 

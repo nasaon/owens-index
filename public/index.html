@@ -9,6 +9,12 @@
 <meta property="og:type" content="website">
 <meta property="og:title" content="OWENS INDEX">
 <meta property="og:description" content="릭오웬스 전 상품, 판매처별 재고와 최저가를 한눈에. 비공식 팬 인덱스.">
+<meta property="og:url" content="https://owens-index.pages.dev/">
+<meta property="og:image" content="https://owens-index.pages.dev/og.png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<link rel="canonical" href="https://owens-index.pages.dev/">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14'/%3E%3Ctext x='32' y='43' font-family='Arial' font-size='28' font-weight='700' fill='white' text-anchor='middle'%3EOI%3C/text%3E%3C/svg%3E">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <style>
@@ -121,7 +127,7 @@
   .block { margin-top: 12vh; }
   .block > h3 { font-size: clamp(24px, 2.6vw, 34px); letter-spacing: -.03em; margin-bottom: 8px; }
   .block > .note { color: var(--mute); font-size: 14px; line-height: 1.7; margin-bottom: 26px; max-width: 46em; }
-  .src { color: #5c5c60; font-size: 12px; margin-top: 22px; line-height: 1.7; }
+  .src { color: #7a7a7f; font-size: 12px; margin-top: 22px; line-height: 1.7; }
   .src a { color: #8e8e93; }
 
   .stores { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 270px), 1fr)); gap: 12px; }
@@ -380,11 +386,15 @@
   const fmt = new Intl.NumberFormat('ko-KR');
   const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
   const won = (n) => `₩${fmt.format(Math.round(n))}`;
-  // 공식몰 이미지는 앞부분(DATA.img)을 빼고 저장. Shopify CDN은 width에 맞춰 줄여줌
+  // 공식몰 이미지는 앞부분(DATA.img)을 빼고 저장. 판매처 원본 사진은 장당 1MB가 넘기도 해서 이미지 서버에 작게 요청:
+  // Shopify(판매처 전용 도메인 /cdn/shop 포함)는 width=, LN-CC 같은 Salesforce 이미지는 sw=, END.는 주소 안의 w_숫자
   const sized = (src, w) => {
     if (!src) return '';
     const url = src.startsWith('http') ? src : `${DATA.img}${src}`;
-    return url.includes('cdn.shopify.com') ? `${url}${url.includes('?') ? '&' : '?'}width=${w}` : url;
+    const add = (key) => `${url}${url.includes('?') ? '&' : '?'}${key}=${w}`;
+    if (url.includes('cdn.shopify.com') || url.includes('/cdn/shop/')) return add('width');
+    if (url.includes('/dw/image/')) return add('sw');
+    return url.replace(/\bw_\d+\b/, `w_${w}`);
   };
   const GENDER = { m: '남성', w: '여성', u: '공용' };
   const GROUPS = [['all', '전체'], ['tops', '상의'], ['bottoms', '하의'], ['outer', '아우터'], ['dress', '드레스'], ['shoes', '신발'], ['acc', '액세서리'], ['etc', '기타']];
@@ -429,6 +439,7 @@
     it.stores = list.filter((x) => x.live).length;
     it.avail = new Set(list.flatMap((x) => x.sizes));
     it.all = new Set([...it.avail, ...it.sizes.map(([s]) => s)]);
+    it.where = list.map((x) => (x.store === 'official' ? '공식몰' : STORES[x.store]?.name)).join(' '); // 판매처 이름으로도 검색
   }
   const live = DATA.items.filter((it) => it.live);
   const NEW_SINCE = DATA.updated ? new Date(Date.parse(DATA.updated) - 7 * 864e5).toISOString().slice(0, 10) : '9999';
@@ -585,7 +596,7 @@
       (!state.runway || it.runway) &&
       (!state.multi || (state.stock ? it.stores : it.o.length) > 1) &&
       (!state.stock || it.live) &&
-      (!q || `${it.name} ${it.code} ${it.category} ${it.fit.join(' ')} ${seasonLabel(it.season)} ${it.collab} ${it.line}`.toLowerCase().includes(q)));
+      (!q || `${it.name} ${it.code} ${it.category} ${it.fit.join(' ')} ${seasonLabel(it.season)} ${it.collab} ${it.line} ${it.where}`.toLowerCase().includes(q)));
     // 사이즈 목록: 나머지 조건에 맞는 상품의 사이즈만 (재고만 보기면 어느 판매처든 재고 있는 사이즈)
     const sizes = [...new Set(base.flatMap((it) => [...(state.stock ? it.avail : it.all)]))].sort((a, b) => sizeRank(a) - sizeRank(b));
     if (state.size && !sizes.includes(state.size)) sizes.unshift(state.size);
@@ -654,7 +665,7 @@
   function openSheet(it) {
     current = it;
     lastFocus = document.activeElement;
-    $('#sGallery').innerHTML = it.images.map((s) => `<img src="${sized(s, 1100)}" loading="lazy" alt="">`).join('');
+    $('#sGallery').innerHTML = it.images.map((s, i) => `<img src="${sized(s, 1100)}" loading="lazy" alt="${esc(it.name)} 사진 ${i + 1}">`).join('');
     $('#sLine').textContent = [it.line, seasonLabel(it.season)].filter(Boolean).join(' · ');
     $('#sName').textContent = it.name;
     // 공식몰 상품 id = 품번+원단+색상 (같은 품번이라도 원단이 다르면 다른 상품)
@@ -686,6 +697,7 @@
     $('#sheet').classList.add('open');
     $('#sheet').setAttribute('aria-hidden', 'false');
     document.body.classList.add('lock');
+    $$('.nav, .view, footer').forEach((el) => { el.inert = true; }); // 상세가 열려 있는 동안 뒤 화면으로 포커스가 가지 않게
     $('#sGallery').scrollTo(0, 0);
     $('.info').scrollTo(0, 0);
     $('.panel .close').focus({ preventScroll: true });
@@ -697,6 +709,7 @@
     $('#sheet').classList.remove('open');
     $('#sheet').setAttribute('aria-hidden', 'true');
     document.body.classList.remove('lock');
+    $$('.nav, .view, footer').forEach((el) => { el.inert = false; }); // 포커스를 되돌리기 전에 풀어야 함
     lastFocus?.focus({ preventScroll: true });
     syncUrl();
   }

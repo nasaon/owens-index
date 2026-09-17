@@ -1,6 +1,6 @@
 // 릭오웬스 공식몰(rickowens.eu)과 다른 판매처 상품을 받아 사이트용 public/data.js로 저장: node build.mjs
 import { writeFileSync } from 'node:fs';
-import { EXCLUDED, STORES, UNSUPPORTED, collect, fromCode, kindOf, match } from './stores.mjs';
+import { EXCLUDED, STORES, UNSUPPORTED, cleanSize, collect, fromCode, kindOf, match } from './stores.mjs';
 
 // 한국 마켓: 원화 가격, 한국에서 살 수 있는 상품 기준
 const BASE = 'https://www.rickowens.eu/en-kr';
@@ -90,7 +90,7 @@ for (const p of all) {
     gender: inMen === inWomen ? 'u' : inMen ? 'm' : 'w', // 둘 다거나 둘 다 아니면(가방·주얼리 등) 공용
     fit: FIT.filter(([re]) => re.test(lower)).map(([, label]) => label),
     details: DETAILS.map((family) => family.find(([re]) => re.test(lower))?.[1]).filter(Boolean),
-    sizes: p.variants.map((v) => [v.option1, v.available]),
+    sizes: p.variants.map((v) => [cleanSize(v.option1), v.available]), // 판매처 사이즈와 같은 표기 (6,5 → 6½)
     price: Math.min(...p.variants.map((v) => Number(v.price))), // 원화
     images: p.images.slice(0, 6).map((i) => i.src.replace(IMG, '')),
     added: (p.published_at ?? p.created_at ?? '').slice(0, 10),
@@ -138,8 +138,9 @@ for (const group of extra) {
     code: o.code,
     fabric,
     color,
-    // 'Rick Owens - Men's Concordian Coat - (Black)', 'HIGH CUT SNEAKER (MENS)' → 'CONCORDIAN COAT', 'HIGH CUT SNEAKER'
-    name: o.name.replace(/^rick owens( drkshdw| lilies)?\s*-?\s*/i, '').replace(/^(wo)?men'?s?\s+/i, '').replace(/\s*-\s*\([^)]*\)\s*$|\s*\((wo)?mens?\)\s*$/i, '').replace(/^릭오웬스\s*/, '').trim().toUpperCase(),
+    // 'Rick Owens - Men’s Concordian Coat - (Black)', 'HIGH CUT SNEAKER (MENS)', 'Tommy T in Black' → 'CONCORDIAN COAT', 'HIGH CUT SNEAKER', 'TOMMY T'
+    name: o.name.replace(/^rick owens( drkshdw| lilies)?\s*-?\s*/i, '').replace(/^(wo)?men['’]?s?\s+/i, '')
+      .replace(/\s*-\s*\([^)]*\)\s*$|\s*\((wo)?mens?\)\s*$|\s+in\s+[a-z/ ]+$/i, '').replace(/^릭오웬스\s*/, '').trim().toUpperCase(),
     ...fromCode(o.code),
     runway: false,
     group: kind,

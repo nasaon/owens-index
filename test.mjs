@@ -15,7 +15,8 @@ assert.equal(sku('desc2:RO02F5782'), 'RO02F5782|||'); // DSM 런던: 품번만
 assert.equal(parseSku('2000012286506'), null);
 assert.deepEqual(['09', '0909', '0911', '911'].map(normColor), ['9', '909', '911', '911']);
 assert.deepEqual(['Size EU 52', 'wshoeseu_EU 36', 'wrtwstd_S', '40-구매가능(당일발송)', '39.5', 'Default Title'].map(cleanSize), ['52', '36', 'S', '40', '39½', 'UNI']);
-assert.deepEqual(['Size OS', 'Size US L', 'Size 31', '6,5', 'MENS 9', undefined].map(cleanSize), ['UNI', 'L', '31', '6½', 'MENS 9', 'UNI']);
+assert.deepEqual(['Size OS', 'Size US L', 'Size 31', '6,5', undefined, 'O/S'].map(cleanSize), ['UNI', 'L', '31', '6½', 'UNI', 'UNI']);
+assert.deepEqual(['2X', 'LGE', 'IT 50 / US 32', '41 | 8', '50-52', 'MENS 9', 'WOMENS 8½', 'MENS 9,5'].map(cleanSize), ['XXL', 'L', '50', '41', '50-52', '42', '38½', '42½']);
 
 // 공식몰에 없는 상품의 분류·시즌
 assert.deepEqual(kindOf("Men's Jeans Bolan Bootcut Jeans"), ['bottoms', '하의']);
