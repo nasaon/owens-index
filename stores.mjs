@@ -90,6 +90,7 @@ async function shopify(base, handles, read) {
         gender: /\b(wom[ae]n'?s?|femme|donna)\b/i.test(`${p.title} ${p.product_type} ${p.tags.join(' ')} ${p.collection}`) ? 'w'
           : /\b(m[ae]n'?s?|uomo|homme)\b/i.test(`${p.title} ${p.product_type} ${p.tags.join(' ')} ${p.collection}`) ? 'm' : '',
         price: Math.min(...(live.length ? live : variants).map((v) => Number(v.price))),
+        was: Math.max(0, ...(live.length ? live : variants).map((v) => Number(v.compare_at_price) || 0)), // 세일 전 가격 (없으면 0)
         url: `${base}/products/${p.handle}`,
         sizes: live.map((v) => cleanSize(i >= 0 ? v[`option${i + 1}`] : v.title)),
         image: p.images[0]?.src ?? '',
@@ -130,6 +131,7 @@ async function lncc() {
           gender: gender === 'men' ? 'm' : 'w',
           currency: p.currency,
           price,
+          was: Math.max(0, ...(p.priceRanges ?? []).map((r) => r.maxPrice ?? 0)), // 정가·세일 가격표가 따로 있으면 큰 쪽이 정가
           url,
           sizes: p.variants.filter((v) => v.orderable).map((v) => cleanSize(v.variationValues?.size)),
           image: p.image?.disBaseLink ?? '',
@@ -158,6 +160,7 @@ async function end() {
         kind: `${(h.department_hierarchy ?? []).join(' ')} ${h.name}`,
         gender: h.menswear && !h.womenswear ? 'm' : h.womenswear && !h.menswear ? 'w' : '',
         price: h.final_price_12, // 12번 = 한국 사이트 원화 가격
+        was: h.full_price_12 ?? 0,
         url: `https://www.endclothing.com/kr/${h.url_key}.html`,
         sizes: [],
         stock: h.stock > 0,
@@ -178,7 +181,10 @@ async function wiberlux() {
     const boxes = html.split(/<li id="anchorBoxId_/).slice(1);
     for (const li of boxes) {
       const parsed = parseSku(li.match(/class="model_name">([^<]*)</)?.[1]);
-      if (parsed) list.push({ ...parsed, no: li.match(/^\d+/)[0], name: li.match(/<span class="" style="[^"]*">([^<]*)</)?.[1] ?? '', image: li.match(/<img src="([^"]+)"[^>]*class="thumb"/)?.[1] ?? '' });
+      if (parsed) {
+        list.push({ ...parsed, no: li.match(/^\d+/)[0], name: li.match(/<span class="" style="[^"]*">([^<]*)</)?.[1] ?? '', image: li.match(/<img src="([^"]+)"[^>]*class="thumb"/)?.[1] ?? '',
+          was: Number(li.match(/class="font14 custom[^"]*">([\d,]+)</)?.[1]?.replace(/,/g, '')) || 0 }); // 목록의 줄 그은 정가
+      }
     }
     if (boxes.length < 60) break;
   }
@@ -271,14 +277,14 @@ export const EXCLUDED = [
   ['상장폐지·파산·폐업', ['Farfetch (2024년 1월 뉴욕증시 상장폐지)', '발란 (2026년 2월 파산 선고)', '캐치패션 (폐업)']],
 ];
 
-// 판매처별로 받기. 한 곳이 실패해도 나머지는 씀
+// 판매처별로 받기. 한 곳이 실패해도 나머지는 씀. 세일 전 가격(was)은 지금 가격보다 비쌀 때만 남김
 export async function collect(log = console.log) {
   const offers = [];
   const failed = [];
   for (const store of STORES) {
     try {
       const got = (await store.collect()).filter((o) => o.price > 0); // 가격 0 = 판매처 쪽 가격 미정
-      offers.push(...got.map((o) => ({ ...o, store: store.id, currency: o.currency ?? store.currency, stock: o.stock ?? o.sizes.length > 0 })));
+      offers.push(...got.map((o) => ({ ...o, store: store.id, currency: o.currency ?? store.currency, stock: o.stock ?? o.sizes.length > 0, was: o.was > o.price ? o.was : 0 })));
       log(`  ${store.name}: ${got.length}개`);
     } catch (e) {
       failed.push(store.id);

@@ -1,6 +1,7 @@
 // 판매처 품번 읽기·매칭 자체 점검: node test.mjs
 import assert from 'node:assert/strict';
 import { offersFor, sizeKey } from './bot.mjs';
+import { onRequestPost } from './functions/api/places.js';
 import { bestPrice, track } from './publish.mjs';
 import { cleanSize, fromCode, kindOf, match, normColor, parseSku } from './stores.mjs';
 
@@ -62,4 +63,16 @@ tracked = track(tracked.next, [priced('a', 995), priced('b', 930)], '2026-09-11'
 assert.deepEqual([tracked.next.a.length, tracked.next.b.length, [...tracked.drops]], [1, 2, [['b', ['2026-09-10', 1000]]]]);
 assert.deepEqual([...track(tracked.next, [priced('a', 995), priced('b', 1000)], '2026-09-11').drops], []);
 assert.deepEqual([...track({ c: [['2026-09-01', 1000]] }, [priced('c', 900)], '2026-09-21').drops], [['c', ['2026-09-01', 1000]]]);
+
+// 매장 제보 API: 이상한 입력은 거르고, 봇 칸은 저장 없이 성공인 척, 종류·링크는 허용된 값만
+const saved = [];
+const env = { REVIEW_SECRET: 's', DB: { prepare: () => ({ bind: (...row) => ({ first: async () => ({ mine: 0 }), run: async () => (saved.push(row), { meta: { last_row_id: 1 } }) }), first: async () => ({ waiting: 0 }) }) } };
+globalThis.fetch = async () => new Response('{}'); // 텔레그램 알림은 보내지 않음
+const post = async (body) => (await onRequestPost({ request: new Request('https://x/api/places', { method: 'POST', body: JSON.stringify(body) }), env })).status;
+const shop = { name: '매장', city: '서울', lat: 37.5, lng: 127 };
+assert.deepEqual(await Promise.all([null, { ...shop, lat: 'x' }, { ...shop, name: ' ' }].map(post)), [400, 400, 400]);
+assert.equal(await post({ ...shop, website: 'spam' }), 201);
+assert.equal(saved.length, 0);
+assert.equal(await post({ ...shop, kind: 'toString', url: 'javascript:alert(1)' }), 201);
+assert.deepEqual([saved[0][1], saved[0][7]], ['other', '']);
 console.log('자체 점검 통과');

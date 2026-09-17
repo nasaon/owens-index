@@ -95,6 +95,9 @@ for (const p of all) {
     images: p.images.slice(0, 6).map((i) => i.src.replace(IMG, '')),
     added: (p.published_at ?? p.created_at ?? '').slice(0, 10),
   });
+  // 공식몰 세일: 세일 전 가격이 있을 때만 넣음 (data.js 크기 절약)
+  const was = Math.max(0, ...p.variants.map((v) => Number(v.compare_at_price) || 0));
+  if (was > items.at(-1).price) items.at(-1).was = was;
 }
 // 공식몰이 잠깐 이상하게 응답해도 빈 목록으로 덮어쓰지 않게
 if (items.length < 1000) throw new Error(`상품이 ${items.length}개뿐이라 저장하지 않음`);
@@ -113,10 +116,10 @@ try {
 }
 const offers = got.filter((o) => o.currency === 'KRW' || fx?.[o.currency]);
 const krw = (o) => (o.currency === 'KRW' ? o.price : Math.round((o.price * fx[o.currency]) / 100) * 100); // 환산 가격은 100원 단위
-// 판매처 한 곳당 한 줄 (같은 상품이 두 번 올라와 있으면 재고 있는 것·싼 것): [판매처, 원화, 주소, 재고 사이즈, 재고 여부, 원래 통화 가격]
+// 판매처 한 곳당 한 줄 (같은 상품이 두 번 올라와 있으면 재고 있는 것·싼 것): [판매처, 원화, 주소, 재고 사이즈, 재고 여부, 원래 통화 가격, 세일 전 원화 가격]
 const rows = (list) => [...Map.groupBy(list, (o) => o.store).values()]
   .map((g) => g.sort((a, b) => b.stock - a.stock || krw(a) - krw(b))[0])
-  .map((o) => [o.store, krw(o), o.url, o.sizes, o.stock ? 1 : 0, o.currency === 'KRW' ? 0 : o.price]);
+  .map((o) => [o.store, krw(o), o.url, o.sizes, o.stock ? 1 : 0, o.currency === 'KRW' ? 0 : o.price, o.was ? krw({ ...o, price: o.was }) : 0]);
 
 const { matched, extra, unsure } = match(items, offers);
 for (const it of items) if (matched.has(it.id)) it.offers = rows(matched.get(it.id));

@@ -26,6 +26,7 @@
     --bg: #000; --fg: #f5f5f7; --mute: #86868b; --dim: #3a3a3c; --line: #1d1d1f; --card: #0b0b0c;
     --ease: cubic-bezier(.2, .8, .2, 1);
     --pad: max(16px, 4vw);
+    color-scheme: dark; /* 스크롤바·입력창도 어두운 테마로 */
   }
   * { box-sizing: border-box; margin: 0; }
   html { background: var(--bg); color: var(--fg); scroll-behavior: smooth; -webkit-font-smoothing: antialiased;
@@ -238,7 +239,7 @@
   #sLike.on { background: var(--fg); color: #000; border-color: var(--fg); }
 
   /* 내 사이즈 설정 창 (브라우저 기본 dialog: 포커스 가두기·Esc 닫기가 기본으로 됨) */
-  .dialog { width: min(560px, calc(100vw - 32px)); max-height: 86vh; padding: 28px; border: 1px solid var(--line); border-radius: 24px; background: #0a0a0a; color: var(--fg); }
+  .dialog { width: min(560px, calc(100vw - 32px)); max-height: 86vh; margin: auto; /* * { margin: 0 }이 가운데 정렬을 지우지 않게 */ padding: 28px; border: 1px solid var(--line); border-radius: 24px; background: #0a0a0a; color: var(--fg); }
   .dialog::backdrop { background: rgba(0, 0, 0, .72); }
   .dialog h3 { font-size: 24px; letter-spacing: -.02em; outline: none; }
   .dialog h4 { margin: 22px 0 10px; font-size: 12px; letter-spacing: .18em; color: var(--mute); font-weight: 600; }
@@ -248,6 +249,58 @@
   .picks button[aria-pressed="true"] { background: var(--fg); color: #000; border-color: var(--fg); }
   .dialog .acts { position: sticky; bottom: -28px; margin: 26px -28px -28px; padding: 16px 28px 24px; background: #0a0a0a; border-top: 1px solid var(--line); } /* 사이즈 목록이 길어도 저장 버튼은 항상 보이게 */
   button.buy { border: 0; cursor: pointer; font: inherit; font-weight: 600; }
+
+  /* 전 세계 매장: 지구본(cobe) + 목록 + 매장 카드 */
+  .world { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; }
+  @media (min-width: 900px) { .world { grid-template-columns: minmax(0, 1.15fr) minmax(0, 1fr); align-items: start; } }
+  .globe { position: relative; width: 100%; max-width: 620px; aspect-ratio: 1; margin: 0 auto; cursor: grab; touch-action: pan-y; }
+  .globe:active { cursor: grabbing; }
+  .globe canvas { width: 100%; height: 100%; opacity: 0; transition: opacity 1.4s var(--ease); }
+  .globe canvas.ready { opacity: 1; }
+  .globe-label { position: absolute; left: 50%; top: 50%; translate: -50% calc(-100% - 16px); padding: 8px 12px; border: 1px solid #3a3a3c; border-radius: 12px; background: rgba(0, 0, 0, .82);
+    font-size: 13px; font-weight: 600; line-height: 1.4; text-align: center; white-space: nowrap; pointer-events: none; }
+  .globe-label small { display: block; font-size: 11px; font-weight: 400; color: var(--mute); }
+  .world-side { display: grid; gap: 12px; }
+  .world-side .search { width: 100%; }
+  .row.wrap { flex-wrap: wrap; overflow: visible; margin: 0; padding: 0; }
+  .places { list-style: none; padding: 0; max-height: 440px; overflow: auto; border-top: 1px solid var(--line); overscroll-behavior: contain; }
+  .places button { display: grid; grid-template-columns: 1fr auto; gap: 3px 12px; width: 100%; padding: 12px 2px; border: 0; border-bottom: 1px solid var(--line); background: none; color: inherit; text-align: left; cursor: pointer; }
+  .places button[aria-current="true"] b { text-decoration: underline; text-underline-offset: 4px; }
+  .places b { font-size: 14px; font-weight: 600; }
+  .places span { font-size: 12px; color: var(--mute); }
+  .places em { grid-row: span 2; align-self: center; padding: 3px 8px; border: 1px solid #333; border-radius: 999px; font-size: 11px; font-style: normal; color: var(--mute); white-space: nowrap; }
+  .world-side .buy { justify-self: start; }
+  .place-card { display: grid; gap: 8px; margin-top: 20px; padding: 22px; border: 1px solid var(--line); border-radius: 22px; background: linear-gradient(160deg, #0f0f10, #000 75%); }
+  .place-card .eyebrow { letter-spacing: .08em; } /* 한글 종류 이름은 넓게 벌리지 않음 */
+  .place-card h4 { font-size: 22px; letter-spacing: -.02em; }
+  .place-card p { font-size: 14px; line-height: 1.6; color: var(--mute); }
+  .place-card .acts { margin-top: 6px; }
+
+  /* 온라인 판매처 순위 */
+  .ranks { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 12px; }
+  .rank { padding: 22px; border: 1px solid var(--line); border-radius: 22px; }
+  .rank h4 { font-size: 18px; letter-spacing: -.02em; }
+  .rank ol { display: grid; gap: 12px; margin-top: 16px; padding: 0; list-style: none; counter-reset: rank; }
+  .rank li { display: grid; grid-template-columns: 20px minmax(0, 1fr) auto; gap: 4px 10px; align-items: baseline; font-size: 14px; counter-increment: rank; }
+  .rank li::before { content: counter(rank); color: var(--mute); font-variant-numeric: tabular-nums; }
+  .rank li:not(:has(b))::before { content: none; } /* "해당 없음" 안내 줄엔 순번 없음 */
+  .rank li b { font-weight: 600; }
+  .rank li span { font-variant-numeric: tabular-nums; }
+  .rank li small { grid-column: 2 / -1; font-size: 12px; color: var(--mute); }
+  .rank li i { grid-column: 2 / -1; height: 3px; overflow: hidden; border-radius: 3px; background: #2a2a2c; }
+  .rank li i::after { content: ""; display: block; width: var(--w); height: 100%; background: var(--fg); }
+
+  /* 매장 제보 창 */
+  .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 18px; }
+  .fields label { display: grid; gap: 6px; font-size: 12px; color: var(--mute); }
+  .fields .wide { grid-column: 1 / -1; }
+  .fields input, .fields select { width: 100%; padding: 10px 12px; border: 1px solid #333; border-radius: 10px; background: #161617; color: var(--fg); font-size: 15px; }
+  .find { display: flex; gap: 8px; }
+  .results { display: grid; gap: 6px; padding: 0; list-style: none; }
+  .results button { width: 100%; padding: 10px 12px; border: 1px solid #333; border-radius: 10px; background: none; color: var(--fg); font-size: 13px; line-height: 1.5; text-align: left; cursor: pointer; }
+  .results button[aria-pressed="true"] { border-color: var(--fg); background: #161617; }
+  .hp { position: absolute; left: -9999px; width: 1px; height: 1px; opacity: 0; }
+  @media (max-width: 480px) { .fields { grid-template-columns: 1fr; } }
 
   footer { border-top: 1px solid var(--line); padding: 40px var(--pad) 56px; color: var(--mute); font-size: 12px; line-height: 1.8; }
 
@@ -332,6 +385,34 @@
   <p class="eyebrow">STORES</p>
   <h2 class="title">판매처</h2>
   <p class="lead" id="storesLead"></p>
+
+  <div class="block">
+    <h3>전 세계 매장</h3>
+    <p class="note" id="placesNote">매장 목록을 불러오는 중이에요.</p>
+    <div class="world">
+      <div class="globe" id="globeBox">
+        <canvas id="globe" role="img" aria-label="릭오웬스 매장이 표시된 지구본. 목록에서 매장을 고르면 그곳으로 돌아가요."></canvas>
+        <p class="globe-label" id="globeLabel" hidden></p>
+      </div>
+      <div class="world-side">
+        <div class="row wrap" id="placeKinds"></div>
+        <input class="search" id="placeQ" type="search" placeholder="도시, 매장 이름" aria-label="매장 검색" autocomplete="off">
+        <ul class="places" id="placeList"></ul>
+        <button class="buy" id="addPlace">+ 매장 제보하기</button>
+      </div>
+    </div>
+    <div class="place-card" id="placeCard" hidden></div>
+    <p class="src">공식 매장은 rickowens.eu 매장 안내, 국내 백화점은 각 백화점 층별 안내, 판매처 매장은 각 판매처 사이트 기준이에요. 판매처 매장은 릭오웬스 입고가 매장마다 달라서 방문 전에 확인해 주세요. 제보는 운영자가 확인한 뒤 올라가요. 지도 데이터 © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors</p>
+  </div>
+
+  <div class="block">
+    <h3>온라인 판매처 순위</h3>
+    <p class="note">오늘 모은 재고 기준이에요. 할인율은 판매처마다 자기 정가와 비교한 값이라 관부가세와 상관없이 견줄 수 있어요.</p>
+    <div class="ranks">
+      <section class="rank"><h4>할인 폭이 큰 곳</h4><p class="fine">세일 상품의 평균 할인율 (세일 5개 이상인 곳)</p><ol id="rankSale"></ol></section>
+      <section class="rank"><h4>상품이 많은 곳</h4><p class="fine">재고 있는 릭오웬스 상품 수</p><ol id="rankCount"></ol></section>
+    </div>
+  </div>
 
   <div class="block">
     <h3>가격 비교 지원</h3>
@@ -434,6 +515,28 @@
   </form>
 </dialog>
 
+<dialog class="dialog" id="placeDialog" aria-labelledby="placeTitle">
+  <form id="placeForm" novalidate>
+    <h3 id="placeTitle" tabindex="-1" autofocus>매장 제보하기</h3>
+    <p class="note">릭오웬스를 파는 매장을 알려 주세요. 운영자가 확인한 뒤 지구본에 올라가요.</p>
+    <div class="fields">
+      <label class="wide">매장 이름<input name="name" maxlength="60" placeholder="예: ○○ 아울렛 릭오웬스"></label>
+      <label>종류<select name="kind"><option value="select">편집샵</option><option value="dept">백화점</option><option value="outlet">아울렛</option><option value="official">공식 매장</option><option value="vintage">빈티지·중고</option><option value="other">기타</option></select></label>
+      <label>닉네임 (선택)<input name="nick" maxlength="20" placeholder="카페 닉네임"></label>
+      <label class="wide">위치 찾기<span class="find"><input name="query" maxlength="120" placeholder="주소나 건물 이름"><button type="button" class="chip" id="findPlace">찾기</button></span></label>
+      <ul class="results wide" id="placeResults"></ul>
+      <label>도시<input name="city" maxlength="40"></label>
+      <label>나라<input name="country" maxlength="40"></label>
+      <label class="wide">링크 (인스타그램·홈페이지, 선택)<input name="url" type="url" maxlength="200" placeholder="https://"></label>
+      <label class="wide">한마디 (층, 취급 라인 등, 선택)<input name="note" maxlength="200"></label>
+      <input name="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
+    </div>
+    <p class="fine" id="placeMsg" role="status"></p>
+    <p class="fine">위치 검색 © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors</p>
+    <div class="acts"><button class="buy" type="submit">제보 보내기</button><button class="chip" type="button" id="placeClose">닫기</button></div>
+  </form>
+</dialog>
+
 <footer>
   비공식 팬 인덱스예요. 상품 정보와 이미지의 권리는 Rick Owens와 각 판매처에 있고, 구매는 각 판매처에서 해주세요. 가격과 재고는 하루 한 번 갱신돼서 실제와 다를 수 있어요.<br>
   <span id="updated"></span>
@@ -494,15 +597,15 @@
   ];
 
   // 상품마다 판매처 가격 목록을 한 번만 계산: 재고 있는 곳 먼저, 그다음 싼 순
-  // DATA offers 한 줄 = [판매처, 원화 가격, 주소, 재고 사이즈, 재고 여부(사이즈 없이 재고만 알려주는 곳 있음), 원래 통화 가격]
+  // DATA offers 한 줄 = [판매처, 원화 가격, 주소, 재고 사이즈, 재고 여부(사이즈 없이 재고만 알려주는 곳 있음), 원래 통화 가격, 세일 전 원화 가격(세일 아니면 0)]
   const LETTERS = ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
   const sizeRank = (s) => (s === 'UNI' ? -1 : LETTERS.includes(s) ? LETTERS.indexOf(s) : 100 + (parseFloat(s.replace('½', '.5')) || 900));
   const byCode = new Map(); // 같은 품번의 다른 색상·소재
   for (const it of DATA.items) {
     if (!byCode.has(it.code)) byCode.set(it.code, []);
     byCode.get(it.code).push(it);
-    const list = (it.offers ?? []).map(([store, krw, url, sizes, live, orig]) => ({ store, krw, url, sizes, live: Boolean(live), orig }));
-    if (!it.ext) list.push({ store: 'official', krw: it.price, url: `${DATA.base}/products/${it.id}`, sizes: it.sizes.filter(([, ok]) => ok).map(([s]) => s), live: it.sizes.some(([, ok]) => ok) });
+    const list = (it.offers ?? []).map(([store, krw, url, sizes, live, orig, was]) => ({ store, krw, url, sizes, live: Boolean(live), orig, was: was ?? 0 }));
+    if (!it.ext) list.push({ store: 'official', krw: it.price, url: `${DATA.base}/products/${it.id}`, sizes: it.sizes.filter(([, ok]) => ok).map(([s]) => s), live: it.sizes.some(([, ok]) => ok), was: it.was ?? 0 });
     list.sort((a, b) => b.live - a.live || a.krw - b.krw);
     it.o = list;
     it.live = list.some((x) => x.live);
@@ -545,6 +648,7 @@
   function showView() {
     const view = ['saved', 'stores', 'archive'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'shop';
     if (view === 'saved') renderSaved();
+    if (view === 'stores') setTimeout(openStores); // 화면이 보인 뒤 지구본 크기를 잼
     const changed = $(`#${view}`).hidden;
     $$('.view').forEach((el) => { el.hidden = el.id !== view; });
     $$('.nav nav a').forEach((a) => (a.dataset.view === view ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current')));
@@ -567,6 +671,200 @@
   $('#fxNote').innerHTML = fx.date ? `환율(${esc(fx.date)}): ${['EUR', 'USD', 'KWD'].filter((c) => fx[c]).map((c) => `1 ${c} = ${won(fx[c])}`).join(' · ')} · <a href="https://www.exchangerate-api.com" target="_blank" rel="noopener">Rates By Exchange Rate API</a>` : '';
   $('#unsupported').innerHTML = (DATA.unsupported ?? []).map(([why, list]) => `<div><h4>${esc(why)}</h4><div class="row">${list.map(([name, url]) => `<a class="chip" href="${esc(url)}" target="_blank" rel="noopener">${esc(name)} ↗</a>`).join('')}</div></div>`).join('');
   $('#excluded').innerHTML = (DATA.excluded ?? []).map(([why, list]) => `<div><h4>${esc(why)}</h4><div class="row">${list.map((name) => `<span class="chip plain">${esc(name)}</span>`).join('')}</div></div>`).join('');
+
+  // 온라인 판매처 순위 (오늘 데이터): 할인 폭은 판매처 자기 정가 대비라 관부가세와 상관없는 비교
+  // ponytail: 판매처끼리 가격 비교 순위는 뺌 (해외가는 관부가세 전이라 늘 싸 보임), 세후 가격을 알게 되면 추가
+  function renderRanks() {
+    const stats = new Map();
+    for (const it of DATA.items) {
+      for (const x of it.o) {
+        if (!x.live) continue;
+        if (!stats.has(x.store)) stats.set(x.store, { id: x.store, count: 0, only: 0, sale: 0, off: 0, max: 0 });
+        const s = stats.get(x.store);
+        s.count++;
+        if (it.ext) s.only++;
+        if (x.was > x.krw) {
+          s.sale++;
+          s.off += 1 - x.krw / x.was;
+          s.max = Math.max(s.max, 1 - x.krw / x.was);
+        }
+      }
+    }
+    const name = (id) => (id === 'official' ? '공식몰' : STORES[id]?.name ?? id);
+    const pct = (v) => `${Math.round(v * 100)}%`;
+    const fill = (el, rows, value, sub, ratio) => {
+      $(el).innerHTML = rows.slice(0, 10).map((s) => `<li><b>${esc(name(s.id))}</b><span>${value(s)}</span><small>${sub(s)}</small><i style="--w:${Math.round(ratio(s) * 100)}%"></i></li>`).join('')
+        || '<li><small>오늘은 해당하는 판매처가 없어요.</small></li>';
+    };
+    const all = [...stats.values()];
+    const sale = all.filter((s) => s.sale >= 5).sort((a, b) => b.off / b.sale - a.off / a.sale);
+    fill('#rankSale', sale, (s) => `평균 ${pct(s.off / s.sale)}`, (s) => `세일 ${fmt.format(s.sale)}개 · 최대 ${pct(s.max)}`, (s) => s.off / s.sale / (sale[0].off / sale[0].sale));
+    const count = [...all].sort((a, b) => b.count - a.count);
+    fill('#rankCount', count, (s) => `${fmt.format(s.count)}개`, (s) => (s.only ? `공식몰에 없는 상품 ${fmt.format(s.only)}개` : '공식몰 상품 기준'), (s) => s.count / count[0].count);
+  }
+  renderRanks();
+
+  // 전 세계 매장: 기본 목록(places.json: 공식 매장·백화점·판매처 매장) + 카페 회원 제보 중 승인된 것(/api/places)
+  const PLACE_KIND = { official: '공식 매장', dept: '백화점', retailer: '판매처 매장', select: '편집샵', outlet: '아울렛', vintage: '빈티지·중고', other: '기타' };
+  const SEOUL = [37.5665, 126.978];
+  const km = ([a1, o1], [a2, o2]) => {
+    const r = Math.PI / 180;
+    const h = Math.sin(((a2 - a1) * r) / 2) ** 2 + Math.cos(a1 * r) * Math.cos(a2 * r) * Math.sin(((o2 - o1) * r) / 2) ** 2;
+    return Math.round(12742 * Math.asin(Math.sqrt(h)));
+  };
+  let places = [];
+  let placeKind = 'all';
+  let picked = null;
+  let draft = null; // 제보 창에서 고른 위치
+  let globe = null;
+  const spin = { phi: 4.2, theta: 0.35, target: null, drag: null };
+  const calm = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  async function openStores() {
+    if (globe) return frame();
+    globe = 'loading';
+    const [cobe, base, sent] = await Promise.all([
+      import('https://cdn.jsdelivr.net/npm/cobe@2.0.1/dist/index.esm.js').catch(() => null),
+      fetch('places.json').then((r) => r.json()).catch(() => []),
+      fetch('/api/places').then((r) => (r.ok ? r.json() : [])).catch(() => []),
+    ]);
+    places = [...base, ...sent.map((p) => ({ ...p, id: `u${p.id}`, user: true }))];
+    renderPlaces();
+    const canvas = $('#globe');
+    if (!cobe || !canvas.offsetWidth) { $('#globeBox').hidden = !cobe; globe = null; return; } // 지구본을 못 불러와도 목록은 그대로
+    globe = cobe.default(canvas, {
+      devicePixelRatio: Math.min(2, devicePixelRatio), width: canvas.offsetWidth, height: canvas.offsetWidth, phi: spin.phi, theta: spin.theta,
+      dark: 1, diffuse: 1.2, mapSamples: 16000, mapBrightness: 5, baseColor: [0.3, 0.3, 0.3], markerColor: [1, 1, 1], glowColor: [0.08, 0.08, 0.08],
+      arcColor: [1, 1, 1], arcWidth: 0.6, arcHeight: 0.25, markerElevation: 0.01, markers: markers(), arcs: [],
+    });
+    canvas.classList.add('ready');
+    // 끌어서 돌리기 (세로 스크롤은 페이지로)
+    canvas.onpointerdown = (e) => {
+      spin.drag = [e.clientX, e.clientY, spin.phi, spin.theta];
+      spin.target = null;
+      $('#globeLabel').hidden = true; // 돌리면 이름표가 매장 점에서 떨어지니 숨김
+      canvas.setPointerCapture(e.pointerId);
+    };
+    canvas.onpointermove = (e) => {
+      if (!spin.drag) return;
+      const [x, y, phi, theta] = spin.drag;
+      spin.phi = phi + (e.clientX - x) / 180;
+      spin.theta = Math.max(-1, Math.min(1, theta + (e.clientY - y) / 260));
+    };
+    canvas.onpointerup = canvas.onpointercancel = () => { spin.drag = null; };
+    new IntersectionObserver(([e]) => { seen = e.isIntersecting; frame(); }).observe(canvas); // 스크롤해서 안 보이면 그리기 멈춤 (폰 배터리)
+  }
+  // 매장 점: 공식 매장은 크게, 고른 매장은 가장 크게
+  const markers = () => [
+    ...places.map((p) => ({ location: [p.lat, p.lng], size: p === picked ? 0.07 : p.kind === 'official' ? 0.035 : 0.022, color: p.kind === 'official' || p === picked ? [1, 1, 1] : p.user ? [0.55, 0.55, 0.55] : [0.78, 0.78, 0.78] })),
+    ...(draft ? [{ location: [draft.lat, draft.lng], size: 0.07, color: [1, 1, 1] }] : []),
+  ];
+  let raf = 0;
+  let seen = true;
+  function frame() {
+    cancelAnimationFrame(raf);
+    if (typeof globe !== 'object' || !globe || !seen || $('#stores').hidden) return; // 판매처 화면을 떠나거나 지구본이 화면 밖이면 멈춤
+    if (spin.target) {
+      const [phi, theta] = spin.target;
+      const TAU = Math.PI * 2;
+      spin.phi += ((((phi - spin.phi) % TAU) + TAU * 1.5) % TAU - Math.PI) * 0.08; // 가까운 방향으로 돌기
+      spin.theta += (theta - spin.theta) * 0.08;
+    } else if (!spin.drag && !calm) spin.phi += 0.0022;
+    const size = $('#globe').offsetWidth;
+    globe.update({ phi: spin.phi, theta: spin.theta, width: size, height: size });
+    raf = requestAnimationFrame(frame);
+  }
+  // 그 위치가 정면에 오는 각도 (cobe 좌표계)
+  const facing = (lat, lng) => [Math.PI - ((lng * Math.PI) / 180 - Math.PI / 2), (lat * Math.PI) / 180];
+
+  function pickPlace(p) {
+    picked = p;
+    spin.target = facing(p.lat, p.lng);
+    if (typeof globe === 'object' && globe) globe.update({ markers: markers(), arcs: km(SEOUL, [p.lat, p.lng]) > 50 ? [{ from: SEOUL, to: [p.lat, p.lng] }] : [] });
+    const far = km(SEOUL, [p.lat, p.lng]);
+    $('#globeLabel').hidden = false;
+    $('#globeLabel').innerHTML = `${esc(p.name)}<small>${far > 50 ? `서울에서 ${fmt.format(far)}km` : esc(p.city)}</small>`;
+    const kind = p.user ? `카페 회원 제보${p.nick ? ` · ${p.nick}` : ''}` : PLACE_KIND[p.kind];
+    const map = `https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lng}`;
+    $('#placeCard').hidden = false;
+    $('#placeCard').innerHTML = `<p class="eyebrow">${esc(kind)}</p><h4>${esc(p.name)}</h4>
+      <p>${[p.address, [p.city, p.country].filter(Boolean).join(', ')].filter(Boolean).map(esc).join('<br>')}</p>
+      ${p.hours ? `<p>${esc(p.hours)}</p>` : ''}${p.tel ? `<p>${esc(p.tel)}</p>` : ''}${p.note ? `<p>${esc(p.note)}</p>` : ''}
+      <div class="acts"><a class="buy" href="${map}" target="_blank" rel="noopener">지도에서 보기 ↗</a>${p.url || p.source ? `<a class="chip" href="${esc(p.url || p.source)}" target="_blank" rel="noopener nofollow ugc">${p.user ? '링크' : '출처'} ↗</a>` : ''}</div>`;
+    renderPlaces();
+    if (innerWidth < 900) $('#globeBox').scrollIntoView({ behavior: calm ? 'instant' : 'smooth', block: 'center' });
+  }
+
+  function renderPlaces() {
+    const q = $('#placeQ').value.trim().toLowerCase();
+    const is = (p, kind) => (kind === 'all' || (kind === 'user' ? p.user : !p.user && p.kind === kind));
+    const kinds = [['all', '전체'], ...Object.entries(PLACE_KIND), ['user', '카페 제보']].filter(([k]) => places.some((p) => is(p, k)));
+    $('#placeKinds').innerHTML = kinds.map(([k, label]) => `<button class="chip${k === placeKind ? ' on' : ''}" data-kind="${k}">${label} ${places.filter((p) => is(p, k)).length}</button>`).join('');
+    const shown = places.filter((p) => is(p, placeKind) && (!q || `${p.name} ${p.city} ${p.country} ${p.address ?? ''}`.toLowerCase().includes(q)))
+      .sort((a, b) => km(SEOUL, [a.lat, a.lng]) - km(SEOUL, [b.lat, b.lng])); // 서울에서 가까운 순
+    $('#placeList').innerHTML = shown.map((p) => `<li><button data-id="${esc(p.id)}" aria-current="${p === picked}"><b>${esc(p.name)}</b><em>${p.user ? '제보' : PLACE_KIND[p.kind]}</em>
+      <span>${esc([p.city, p.country].filter(Boolean).join(', '))} · 서울에서 ${fmt.format(km(SEOUL, [p.lat, p.lng]))}km</span></button></li>`).join('')
+      || '<li><p class="fine">조건에 맞는 매장이 없어요.</p></li>';
+    const n = (kind) => places.filter((p) => is(p, kind)).length;
+    $('#placesNote').textContent = `공식 매장 ${n('official')}곳 · 백화점 ${n('dept')}곳 · 판매처 매장 ${n('retailer')}곳${n('user') ? ` · 카페 회원 제보 ${n('user')}곳` : ''}. 목록에서 고르면 지구본이 그곳으로 돌아가요.`;
+  }
+  $('#placeKinds').onclick = (e) => { const b = e.target.closest('[data-kind]'); if (b) { placeKind = b.dataset.kind; renderPlaces(); } };
+  $('#placeQ').oninput = renderPlaces;
+  $('#placeList').onclick = (e) => { const b = e.target.closest('[data-id]'); if (b) pickPlace(places.find((p) => p.id === b.dataset.id)); };
+
+  // 매장 제보: 위치는 OpenStreetMap 검색으로 고르고(찾기 버튼을 누를 때만 요청), 운영자 승인 뒤 공개
+  let found = [];
+  $('#addPlace').onclick = () => {
+    $('#placeForm').reset();
+    $('#placeResults').innerHTML = '';
+    $('#placeMsg').textContent = '';
+    draft = null;
+    $('#placeDialog').showModal();
+  };
+  $('#placeClose').onclick = () => $('#placeDialog').close();
+  $('#placeDialog').onclose = () => { draft = null; if (typeof globe === 'object' && globe) globe.update({ markers: markers() }); };
+  $('#findPlace').onclick = async () => {
+    const q = $('#placeForm').elements.query.value.trim();
+    if (q.length < 2) return ($('#placeMsg').textContent = '주소나 건물 이름을 두 글자 이상 적어 주세요.');
+    $('#placeMsg').textContent = '찾는 중…';
+    try {
+      found = await (await fetch(`https://nominatim.openstreetmap.org/search?format=jsonv2&limit=5&addressdetails=1&accept-language=ko&q=${encodeURIComponent(q)}`)).json();
+      $('#placeResults').innerHTML = found.map((r, i) => `<li><button type="button" data-i="${i}" aria-pressed="false">${esc(r.display_name)}</button></li>`).join('');
+      $('#placeMsg').textContent = found.length ? '맞는 위치를 골라 주세요.' : '못 찾았어요. 도시 이름을 붙여 다시 찾아보세요.';
+    } catch {
+      $('#placeMsg').textContent = '위치 검색이 잠시 안 돼요. 조금 뒤에 다시 해 주세요.';
+    }
+  };
+  $('#placeResults').onclick = (e) => {
+    const b = e.target.closest('[data-i]');
+    if (!b) return;
+    const r = found[+b.dataset.i];
+    const f = $('#placeForm').elements;
+    draft = { lat: +r.lat, lng: +r.lon, address: r.display_name.slice(0, 140) };
+    f.city.value ||= r.address?.city ?? r.address?.town ?? r.address?.county ?? r.address?.state ?? '';
+    f.country.value ||= r.address?.country ?? '';
+    $$('#placeResults [data-i]').forEach((x) => x.setAttribute('aria-pressed', x === b));
+    $('#placeMsg').textContent = '위치를 골랐어요. 지구본에 흰 점으로 보여요.';
+    spin.target = facing(draft.lat, draft.lng);
+    if (typeof globe === 'object' && globe) globe.update({ markers: markers() });
+  };
+  $('#placeForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const f = e.target.elements;
+    if (!f.name.value.trim()) return ($('#placeMsg').textContent = '매장 이름을 적어 주세요.');
+    if (!draft) return ($('#placeMsg').textContent = '위치 찾기로 위치를 먼저 골라 주세요.');
+    if (!f.city.value.trim()) return ($('#placeMsg').textContent = '도시를 적어 주세요.');
+    const body = { ...Object.fromEntries(['name', 'kind', 'city', 'country', 'url', 'note', 'nick', 'website'].map((k) => [k, f[k].value])), ...draft };
+    const button = e.target.querySelector('[type="submit"]');
+    button.disabled = true;
+    $('#placeMsg').textContent = '보내는 중…';
+    const res = await fetch('/api/places', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).catch(() => null);
+    const data = await res?.json().catch(() => ({}));
+    button.disabled = false;
+    if (!res?.ok) return ($('#placeMsg').textContent = data?.error ?? '보내지 못했어요. 조금 뒤에 다시 해 주세요.');
+    $('#placeMsg').textContent = '제보 고마워요! 운영자가 확인한 뒤 지구본에 올라가요.';
+    setTimeout(() => $('#placeDialog').close(), 1800);
+  };
 
   // 아카이브 화면
   const countBy = (key, value) => live.filter((it) => it[key] === value).length;

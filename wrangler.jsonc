@@ -1,7 +1,9 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
   "name": "owens-index",
-  // Cloudflare Pages(owens-index.pages.dev)로 배포: npx wrangler pages deploy
+  // Cloudflare Pages(owens-index.pages.dev)로 배포: npx wrangler pages deploy (functions/ 폴더의 API도 같이 올라감)
   "pages_build_output_dir": "public",
-  "compatibility_date": "2026-09-11"
+  "compatibility_date": "2026-09-11",
+  // 유저 매장 제보 저장소 (functions/api/places.js)
+  "d1_databases": [{ "binding": "DB", "database_name": "owens-index", "database_id": "91ccf570-b09b-4f9a-bc4f-b1d92b0736f6" }]
 }
