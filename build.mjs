@@ -1,5 +1,5 @@
 // 릭오웬스 공식몰(rickowens.eu)과 다른 판매처 상품을 받아 사이트용 public/data.js로 저장: node build.mjs
-import { writeFileSync } from 'node:fs';
+import { publish } from './publish.mjs';
 import { EXCLUDED, STORES, UNSUPPORTED, cleanSize, collect, fromCode, kindOf, match } from './stores.mjs';
 
 // 한국 마켓: 원화 가격, 한국에서 살 수 있는 상품 기준
@@ -158,7 +158,6 @@ for (const group of extra) {
 }
 const linked = Map.groupBy([...matched.values()].flat(), (o) => o.store);
 
-// 상품 하나당 한 줄: 깃허브에서 날마다 바뀐 상품만 diff로 보임
 const head = {
   updated: new Date().toISOString(), base: BASE, img: IMG, fx, failed,
   stores: STORES.map(({ id, name, where, currency, home }) => ({ id, name, where, currency, home,
@@ -166,8 +165,7 @@ const head = {
   unsupported: UNSUPPORTED,
   excluded: EXCLUDED,
 };
-writeFileSync(new URL('public/data.js', import.meta.url),
-  `window.RO_DATA = ${JSON.stringify(head).slice(0, -1)},"items":[\n${items.map((it) => JSON.stringify(it)).join(',\n')}\n]};\n`);
+const drops = publish(head, items); // data.js·최저가 기록·상품별 공유 페이지
 const count = (key) => Object.entries(items.reduce((m, it) => ((m[it[key]] = (m[it[key]] ?? 0) + 1), m), {}));
-console.log(`저장: public/data.js · ${items.length}개 (판매처 전용 ${extra.length}개)`, JSON.stringify({ gender: count('gender'), group: count('group'), line: count('line'), season: count('season') }));
+console.log(`저장: public/data.js · ${items.length}개 (판매처 전용 ${extra.length}개, 가격 내림 ${drops}개)`, JSON.stringify({ gender: count('gender'), group: count('group'), line: count('line'), season: count('season') }));
 console.log('판매처별 공식몰 상품 연결:', head.stores.map((s) => `${s.name} ${s.matched}/${s.count}`).join(' · '), `· 못 정해서 뺌 ${unsure.length}`, failed.length ? `· 실패 ${failed.join(', ')}` : '');

@@ -15,6 +15,8 @@
 <meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
 <link rel="canonical" href="https://owens-index.pages.dev/">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icon-192.png">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14'/%3E%3Ctext x='32' y='43' font-family='Arial' font-size='28' font-weight='700' fill='white' text-anchor='middle'%3EOI%3C/text%3E%3C/svg%3E">
 <link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
 <link rel="preconnect" href="https://cdn.shopify.com">
@@ -47,7 +49,8 @@
   .nav nav { display: flex; gap: clamp(16px, 3vw, 34px); }
   .nav nav a { font-size: 13px; color: var(--mute); text-decoration: none; transition: color .3s; white-space: nowrap; }
   .nav nav a:hover, .nav nav a[aria-current="page"] { color: var(--fg); }
-  @media (max-width: 380px) { .logo { letter-spacing: .1em; } .nav nav { gap: 14px; } }
+  .nav sup { margin-left: 2px; font-size: 9px; color: var(--fg); }
+  @media (max-width: 380px) { .logo { font-size: 12px; letter-spacing: .06em; } .nav nav { gap: 10px; } .nav nav a { font-size: 12px; } }
 
   /* 첫 화면: 스크롤하면 제목이 작아지며 사라짐 */
   .hero { height: 150vh; }
@@ -182,7 +185,8 @@
   .gallery { display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 60px 16px 16px; scrollbar-width: none; }
   .gallery::-webkit-scrollbar { display: none; }
   .gallery img { flex: none; scroll-snap-align: center; width: min(440px, 80vw); aspect-ratio: 3 / 4; object-fit: cover; border-radius: 18px; background: #111; }
-  .info { padding: 6px 22px 40px; display: grid; gap: 28px; }
+  /* 열 너비를 화면 폭으로 고정 (다른 색상·소재 가로 줄 전체 폭만큼 넓어지지 않게) */
+  .info { padding: 6px 22px 40px; display: grid; grid-template-columns: minmax(0, 1fr); gap: 28px; }
   .info .line { font-size: 11px; letter-spacing: .24em; color: var(--mute); }
   .info h3 { font-size: clamp(28px, 3.6vw, 46px); letter-spacing: -.04em; line-height: 1.02; margin-top: 10px; }
   .info .code { color: var(--mute); font-size: 13px; margin-top: 10px; }
@@ -221,6 +225,30 @@
     .info { padding: 52px 40px; overflow-y: auto; align-content: start; }
   }
 
+  /* 최저가 변동 그래프 · 다른 색상·소재 */
+  .spark { display: block; width: 100%; height: 64px; color: var(--fg); }
+  .sibs { display: flex; gap: 10px; overflow-x: auto; scrollbar-width: none; padding-bottom: 4px; }
+  .sibs::-webkit-scrollbar { display: none; }
+  .sib { flex: none; width: 104px; text-align: left; background: none; border: 0; padding: 0; color: inherit; cursor: pointer; }
+  .sib img, .sib i { display: block; width: 104px; aspect-ratio: 3 / 4; object-fit: cover; border-radius: 12px; background: var(--card); filter: grayscale(1); transition: filter .5s var(--ease); }
+  .sib:hover img { filter: none; }
+  .sib span { display: block; margin-top: 6px; font-size: 11px; line-height: 1.4; color: var(--mute); }
+  .sib b { display: block; margin-top: 2px; font-size: 12px; font-weight: 600; }
+  .card .down { color: var(--fg); }
+  #sLike.on { background: var(--fg); color: #000; border-color: var(--fg); }
+
+  /* 내 사이즈 설정 창 (브라우저 기본 dialog: 포커스 가두기·Esc 닫기가 기본으로 됨) */
+  .dialog { width: min(560px, calc(100vw - 32px)); max-height: 86vh; padding: 28px; border: 1px solid var(--line); border-radius: 24px; background: #0a0a0a; color: var(--fg); }
+  .dialog::backdrop { background: rgba(0, 0, 0, .72); }
+  .dialog h3 { font-size: 24px; letter-spacing: -.02em; outline: none; }
+  .dialog h4 { margin: 22px 0 10px; font-size: 12px; letter-spacing: .18em; color: var(--mute); font-weight: 600; }
+  .dialog .note { margin-top: 8px; font-size: 14px; line-height: 1.6; color: var(--mute); }
+  .picks { display: flex; flex-wrap: wrap; gap: 6px; }
+  .picks button { min-width: 44px; padding: 8px 10px; border: 1px solid #3a3a3c; border-radius: 10px; background: none; color: var(--fg); font-size: 13px; cursor: pointer; }
+  .picks button[aria-pressed="true"] { background: var(--fg); color: #000; border-color: var(--fg); }
+  .dialog .acts { position: sticky; bottom: -28px; margin: 26px -28px -28px; padding: 16px 28px 24px; background: #0a0a0a; border-top: 1px solid var(--line); } /* 사이즈 목록이 길어도 저장 버튼은 항상 보이게 */
+  button.buy { border: 0; cursor: pointer; font: inherit; font-weight: 600; }
+
   footer { border-top: 1px solid var(--line); padding: 40px var(--pad) 56px; color: var(--mute); font-size: 12px; line-height: 1.8; }
 
   @media (prefers-reduced-motion: reduce) {
@@ -234,6 +262,7 @@
   <a class="logo" href="#top">OWENS INDEX</a>
   <nav>
     <a href="#catalog" data-view="shop">컬렉션</a>
+    <a href="#saved" data-view="saved">관심<sup id="likeCount"></sup></a>
     <a href="#stores" data-view="stores">판매처</a>
     <a href="#archive" data-view="archive">아카이브</a>
   </nav>
@@ -264,6 +293,7 @@
         </select>
       </div>
       <div class="row">
+        <button class="chip" id="mine" title="고른 사이즈에 재고가 있는 상품만">내 사이즈</button>
         <div class="seg" id="gender"></div>
         <span class="sep"></span>
         <div id="groupChips" style="display:flex;gap:8px"></div>
@@ -274,6 +304,7 @@
         <select class="chip" id="season" aria-label="시즌"></select>
         <select class="chip" id="collab" aria-label="협업"></select>
         <select class="chip" id="fit" aria-label="핏"></select>
+        <button class="chip" id="drop">가격 내림</button>
         <button class="chip" id="multi">여러 곳에서 파는 것</button>
         <button class="chip" id="runway">런웨이 피스</button>
         <button class="chip on" id="stock">재고 있는 것만</button>
@@ -285,6 +316,17 @@
     <div class="more" id="more"></div>
   </section>
 </main>
+
+<section class="view page" id="saved" hidden>
+  <p class="eyebrow">SAVED</p>
+  <h2 class="title">관심 상품</h2>
+  <p class="lead" id="savedLead"></p>
+  <div class="grid" id="savedGrid"></div>
+  <div class="block" id="recentWrap" hidden>
+    <h3>최근 본 상품</h3>
+    <div class="grid" id="recentGrid"></div>
+  </div>
+</section>
 
 <section class="view page" id="stores" hidden>
   <p class="eyebrow">STORES</p>
@@ -373,13 +415,24 @@
         <ul class="offers" id="sOffers"></ul>
         <p class="fine" id="sFine"></p>
       </div>
+      <div class="acts"><a class="buy" id="sBuy" target="_blank" rel="noopener"></a><button class="chip" id="sLike" aria-pressed="false">♡ 관심</button><button class="chip" id="sShare">공유하기</button></div>
+      <div id="sHistWrap" hidden><h4>최저가 변동</h4><div id="sHist"></div></div>
+      <div id="sSibWrap" hidden><h4>다른 색상 · 소재</h4><div class="sibs" id="sSib"></div></div>
       <div id="sAlertWrap" hidden><h4>사이즈 알림 · 텔레그램</h4><div class="pills" id="sAlert"></div></div>
       <div><h4>분류</h4><div class="pills" id="sCat"></div></div>
       <div id="sFitWrap"><h4>핏 · 기장</h4><div class="pills" id="sFit"></div></div>
-      <div class="acts"><a class="buy" id="sBuy" target="_blank" rel="noopener"></a><button class="chip" id="sShare">공유하기</button></div>
     </div>
   </article>
 </div>
+
+<dialog class="dialog" id="sizeDialog" aria-labelledby="sizeTitle">
+  <form method="dialog">
+    <h3 id="sizeTitle" tabindex="-1" autofocus>내 사이즈</h3>
+    <p class="note">고른 사이즈에 어느 판매처든 재고가 있는 상품만 모아 봐요. 액세서리는 사이즈와 상관없이 보여요. 이 기기에만 저장돼요.</p>
+    <div id="sizePick"></div>
+    <div class="acts"><button class="buy" value="save">저장하고 보기</button><button class="chip" value="cancel">닫기</button></div>
+  </form>
+</dialog>
 
 <footer>
   비공식 팬 인덱스예요. 상품 정보와 이미지의 권리는 Rick Owens와 각 판매처에 있고, 구매는 각 판매처에서 해주세요. 가격과 재고는 하루 한 번 갱신돼서 실제와 다를 수 있어요.<br>
@@ -394,6 +447,13 @@
   const fmt = new Intl.NumberFormat('ko-KR');
   const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
   const won = (n) => `₩${fmt.format(Math.round(n))}`;
+  // 이 기기에만 저장 (로그인 없음): 관심 상품·최근 본 상품·내 사이즈. 저장소를 못 쓰는 환경이면 저장만 안 되고 화면은 그대로
+  const load = (key, fallback) => { try { return JSON.parse(localStorage.getItem(`ro-${key}`)) ?? fallback; } catch { return fallback; } };
+  const keep = (key, value) => { try { localStorage.setItem(`ro-${key}`, JSON.stringify(value)); } catch { /* 저장 안 됨 */ } };
+  let likes = load('likes', []); // [{ id, krw: 담을 때 최저가, at }]
+  let recent = load('recent', []); // [상품 id]
+  let mySizes = load('sizes', { top: [], bottom: [], shoe: [] });
+  const SIZE_GROUP = { tops: 'top', outer: 'top', dress: 'top', bottoms: 'bottom', shoes: 'shoe' };
   // 공식몰 이미지는 앞부분(DATA.img)을 빼고 저장. 판매처 원본 사진은 장당 1MB가 넘기도 해서 이미지 서버에 작게 요청:
   // Shopify(판매처 전용 도메인 /cdn/shop 포함)는 width=, LN-CC 같은 Salesforce 이미지는 sw=, END.는 주소 안의 w_숫자
   const sized = (src, w) => {
@@ -437,7 +497,10 @@
   // DATA offers 한 줄 = [판매처, 원화 가격, 주소, 재고 사이즈, 재고 여부(사이즈 없이 재고만 알려주는 곳 있음), 원래 통화 가격]
   const LETTERS = ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', 'XXXL'];
   const sizeRank = (s) => (s === 'UNI' ? -1 : LETTERS.includes(s) ? LETTERS.indexOf(s) : 100 + (parseFloat(s.replace('½', '.5')) || 900));
+  const byCode = new Map(); // 같은 품번의 다른 색상·소재
   for (const it of DATA.items) {
+    if (!byCode.has(it.code)) byCode.set(it.code, []);
+    byCode.get(it.code).push(it);
     const list = (it.offers ?? []).map(([store, krw, url, sizes, live, orig]) => ({ store, krw, url, sizes, live: Boolean(live), orig }));
     if (!it.ext) list.push({ store: 'official', krw: it.price, url: `${DATA.base}/products/${it.id}`, sizes: it.sizes.filter(([, ok]) => ok).map(([s]) => s), live: it.sizes.some(([, ok]) => ok) });
     list.sort((a, b) => b.live - a.live || a.krw - b.krw);
@@ -449,6 +512,7 @@
     it.all = new Set([...it.avail, ...it.sizes.map(([s]) => s)]);
     it.where = list.map((x) => (x.store === 'official' ? '공식몰' : STORES[x.store]?.name)).join(' '); // 판매처 이름으로도 검색
   }
+  const byId = new Map(DATA.items.map((it) => [it.id, it]));
   const live = DATA.items.filter((it) => it.live);
   const NEW_SINCE = DATA.updated ? new Date(Date.parse(DATA.updated) - 7 * 864e5).toISOString().slice(0, 10) : '9999';
   const storeCount = Object.keys(STORES).length + 1;
@@ -477,9 +541,10 @@
     });
   }, { passive: true });
 
-  // 화면 전환: #stores, #archive는 따로 보여주고 나머지는 컬렉션
+  // 화면 전환: #saved, #stores, #archive는 따로 보여주고 나머지는 컬렉션
   function showView() {
-    const view = ['stores', 'archive'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'shop';
+    const view = ['saved', 'stores', 'archive'].includes(location.hash.slice(1)) ? location.hash.slice(1) : 'shop';
+    if (view === 'saved') renderSaved();
     const changed = $(`#${view}`).hidden;
     $$('.view').forEach((el) => { el.hidden = el.id !== view; });
     $$('.nav nav a').forEach((a) => (a.dataset.view === view ? a.setAttribute('aria-current', 'page') : a.removeAttribute('aria-current')));
@@ -519,9 +584,9 @@
     }).join('');
 
   // 카탈로그
-  const state = { gender: 'all', line: 'all', group: 'all', size: '', season: '', collab: '', fit: '', multi: false, runway: false, sort: 'new', stock: true, q: '' };
+  const state = { gender: 'all', line: 'all', group: 'all', size: '', season: '', collab: '', fit: '', mine: false, drop: false, multi: false, runway: false, sort: 'new', stock: true, q: '' };
   const DEFAULTS = { ...state };
-  const TOGGLES = ['multi', 'runway', 'stock'];
+  const TOGGLES = ['mine', 'drop', 'multi', 'runway', 'stock'];
   const SELECTS = ['size', 'season', 'collab', 'fit', 'sort'];
   const seg = (el, options, key) => {
     el.innerHTML = options.map(([v, label]) => `<button data-v="${v}">${label}</button>`).join('');
@@ -538,6 +603,29 @@
   $('#fit').innerHTML = options([...new Set(DATA.items.flatMap((it) => it.fit))].sort((a, b) => a.localeCompare(b, 'ko')), '핏 전체');
   for (const key of SELECTS) $(`#${key}`).onchange = (e) => setState({ [key]: e.target.value });
   for (const key of TOGGLES) $(`#${key}`).onclick = () => setState({ [key]: !state[key] });
+  // 내 사이즈: 켤 때마다 저장해 둔 사이즈로 설정 창을 열어 확인·수정 → 저장하면 켜짐
+  const PICKS = [
+    ['top', '상의 · 아우터 · 드레스', ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '38', '40', '42', '44', '46', '48', '50', '52', '54', '56']],
+    ['bottom', '하의 (허리 인치 · IT)', ['XXS', 'XS', 'S', 'M', 'L', 'XL', 'XXL', '26', '27', '28', '29', '30', '31', '32', '33', '34', '36', '38', '40', '42', '44', '46', '48', '50', '52', '54', '56']],
+    ['shoe', '신발 (EU)', ['35', '35½', '36', '36½', '37', '37½', '38', '38½', '39', '39½', '40', '40½', '41', '41½', '42', '42½', '43', '43½', '44', '44½', '45', '45½', '46', '47', '48']],
+  ];
+  $('#mine').onclick = () => {
+    if (state.mine) return setState({ mine: false });
+    $('#sizePick').innerHTML = PICKS.map(([key, label, sizes]) => `<h4>${label}</h4><div class="picks">${sizes.map((s) =>
+      `<button type="button" data-key="${key}" data-size="${s}" aria-pressed="${mySizes[key].includes(s)}">${s}</button>`).join('')}</div>`).join('');
+    $('#sizeDialog').returnValue = ''; // Esc로 닫으면 지난번 'save'가 남아 있어서 비워 둠
+    $('#sizeDialog').showModal();
+  };
+  $('#sizePick').onclick = (e) => {
+    const b = e.target.closest('[data-size]');
+    if (b) b.setAttribute('aria-pressed', b.getAttribute('aria-pressed') !== 'true');
+  };
+  $('#sizeDialog').onclose = () => {
+    if ($('#sizeDialog').returnValue !== 'save') return;
+    mySizes = Object.fromEntries(PICKS.map(([key]) => [key, $$(`#sizePick [data-key="${key}"][aria-pressed="true"]`).map((b) => b.dataset.size)]));
+    keep('sizes', mySizes);
+    setState({ mine: true });
+  };
   let qTimer;
   $('#q').oninput = (e) => { clearTimeout(qTimer); qTimer = setTimeout(() => setState({ q: e.target.value }), 150); };
   $('#reset').onclick = () => { clearTimeout(qTimer); $('#q').value = ''; setState({ ...DEFAULTS, sort: state.sort }); };
@@ -564,7 +652,7 @@
     for (const key of SELECTS) $(`#${key}`).value = state[key];
     for (const key of TOGGLES) { $(`#${key}`).classList.toggle('on', state[key]); $(`#${key}`).setAttribute('aria-pressed', state[key]); }
     // 필터 버튼에 켜진 필터 수 (성별·분류·검색·정렬은 밖에 보여서 뺌)
-    const active = ['line', 'size', 'season', 'collab', 'fit', 'multi', 'runway', 'stock'].filter((key) => state[key] !== DEFAULTS[key]).length;
+    const active = ['line', 'size', 'season', 'collab', 'fit', 'drop', 'multi', 'runway', 'stock'].filter((key) => state[key] !== DEFAULTS[key]).length;
     $('#filterBtn').innerHTML = `필터${active ? `<span class="n">${active}</span>` : ''}`;
     if (active) $('#filters').hidden = false;
     $('#filterBtn').setAttribute('aria-expanded', !$('#filters').hidden);
@@ -609,6 +697,13 @@
     // 사이즈와 한두 글자 영어 단어(level t의 t)는 단어 단위로
     return new RegExp([SIZE.test(w) || /^[a-z]{1,2}$/i.test(w) ? `(?<![\\w½])${word}(?![\\w½])` : word, ...aliases].join('|'), 'i');
   });
+  // 내 사이즈: 그 분류에 정해 둔 사이즈 중 하나라도 (재고) 있으면 통과. 정하지 않은 분류와 액세서리·기타는 그냥 통과
+  const fitsMe = (it) => {
+    const mine = mySizes[SIZE_GROUP[it.group]];
+    if (!mine?.length) return true;
+    const have = state.stock ? it.avail : it.all;
+    return mine.some((s) => have.has(s));
+  };
   let list = [];
   let shown = 0;
   function render() {
@@ -621,6 +716,8 @@
       (!state.collab || it.collab === state.collab) &&
       (!state.fit || it.fit.includes(state.fit)) &&
       (!state.runway || it.runway) &&
+      (!state.mine || fitsMe(it)) &&
+      (!state.drop || it.drop) &&
       (!state.multi || (state.stock ? it.stores : it.o.length) > 1) &&
       (!state.stock || it.live) &&
       terms.every((re) => re.test(`${it.name} ${it.code} ${it.category} ${it.fit.join(' ')} ${seasonLabel(it.season)} ${it.collab} ${it.line} ${it.where} ${[...(state.stock ? it.avail : it.all)].join(' ')}`)));
@@ -644,11 +741,13 @@
   }
   new IntersectionObserver((e) => { if (e[0].isIntersecting && shown < list.length) more(); }, { rootMargin: '1200px' }).observe($('#more'));
 
-  function card(it, i) {
+  // note: 관심 상품 화면에서 '담을 때보다 내림' 같은 한 줄
+  function card(it, i, note = '') {
     const el = document.createElement('button');
     el.className = 'card reveal';
     el.style.setProperty('--d', `${(i % 4) * 50}ms`);
     const tags = [
+      it.drop && `<span class="tag w">↓ ${Math.round((1 - it.best / it.drop[1]) * 100)}%</span>`, // 최근 14일 최고가보다 내림 (publish.mjs)
       it.added >= NEW_SINCE && '<span class="tag w">NEW</span>',
       it.runway && '<span class="tag w">RUNWAY</span>',
       it.collab && `<span class="tag">× ${esc(it.collab.toUpperCase())}</span>`,
@@ -660,7 +759,7 @@
     el.innerHTML = `<span class="ph">${tags ? `<span class="tags">${tags}</span>` : ''}${it.images[0] ? `<img class="a" src="${sized(it.images[0], 600)}" loading="lazy" decoding="async" alt="">` : ''}</span>
       <span class="name">${esc(it.name)}</span>
       <span class="price">${won(it.best)}${where}</span>
-      <span class="sub">${[it.category, GENDER[it.gender], seasonLabel(it.season)].filter(Boolean).map(esc).join(' · ')}</span>`;
+      <span class="sub">${[it.category, GENDER[it.gender], seasonLabel(it.season)].filter(Boolean).map(esc).join(' · ')}</span>${note ? `<span class="sub down">${esc(note)}</span>` : ''}`;
     // 두 번째 사진은 처음 마우스를 올릴 때만 불러옴
     if (it.images[1]) {
       el.addEventListener('pointerenter', () => {
@@ -689,20 +788,23 @@
   // 상세
   let current = null;
   let lastFocus = null;
+  const fabricOf = (it) => (it.ext ? it.fabric : it.id.slice(it.code.length, it.id.length - it.color.length).toUpperCase()); // 공식몰 id = 품번+원단+색상
   function openSheet(it) {
+    if (!current) lastFocus = document.activeElement; // 상세 안에서 다른 색상으로 넘어갈 때는 처음 연 곳을 기억
     current = it;
-    lastFocus = document.activeElement;
+    recent = [it.id, ...recent.filter((id) => id !== it.id)].slice(0, 24);
+    keep('recent', recent);
     $('#sGallery').innerHTML = it.images.map((s, i) => `<img src="${sized(s, 1100)}" loading="lazy" alt="${esc(it.name)} 사진 ${i + 1}">`).join('');
     $('#sLine').textContent = [it.line, seasonLabel(it.season)].filter(Boolean).join(' · ');
     $('#sName').textContent = it.name;
-    // 공식몰 상품 id = 품번+원단+색상 (같은 품번이라도 원단이 다르면 다른 상품)
-    const fabric = it.ext ? it.fabric : it.id.slice(it.code.length, it.id.length - it.color.length).toUpperCase();
+    const fabric = fabricOf(it);
     $('#sCode').textContent = [it.code, fabric && `원단 ${fabric}`, it.color && `색상 ${it.color}`].filter(Boolean).join(' · ');
+    const pick = state.mine ? mySizes[SIZE_GROUP[it.group]] ?? [] : []; // 내 사이즈를 켜 두었으면 가격 비교에서 그 사이즈 강조
     $('#sOffersTitle').textContent = it.o.length > 1 ? `가격 비교 · ${it.o.length}곳` : '가격';
     $('#sOffers').innerHTML = it.o.map((x, i) => {
       const s = x.store === 'official' ? OFFICIAL : STORES[x.store] ?? { name: x.store, where: '' };
       const orig = x.orig && s.currency !== 'KRW' ? `<small>${CURRENCY[s.currency] ?? ''}${fmt.format(x.orig)}</small>` : '';
-      const sizes = !x.live ? '<em>품절</em>' : x.sizes.length ? x.sizes.map((z) => `<span${z === state.size ? ' class="pick"' : ''}>${esc(z)}</span>`).join('') : '<em>재고 있음 · 사이즈는 판매처에서 확인</em>';
+      const sizes = !x.live ? '<em>품절</em>' : x.sizes.length ? x.sizes.map((z) => `<span${z === state.size || pick.includes(z) ? ' class="pick"' : ''}>${esc(z)}</span>`).join('') : '<em>재고 있음 · 사이즈는 판매처에서 확인</em>';
       return `<li><a class="offer${x.live ? '' : ' out'}" href="${esc(x.url)}" target="_blank" rel="noopener">
         <span class="who">${i === 0 && x.live && it.o.length > 1 ? '<span class="badge">최저가</span>' : ''}<b>${esc(s.name)}</b><span>${esc(s.where)}</span></span>
         <span class="amt">${won(x.krw)}${orig}</span><span class="sz">${sizes}</span></a></li>`;
@@ -714,6 +816,13 @@
     $('#sAlertWrap').hidden = !owner;
     if (owner) $('#sAlert').innerHTML = [...[...it.all].sort((a, b) => sizeRank(a) - sizeRank(b)), '전체'].map((z) =>
       `<a class="pill" href="https://t.me/${BOT}?start=w_${it.id}_${z === '전체' ? 'all' : sizeKey(z)}" target="_blank" rel="noopener">${esc(z)}</a>`).join('');
+    // 같은 품번의 다른 색상·소재 (공식몰·판매처 전용 모두), 재고 있는 것·싼 것 먼저
+    const sibs = byCode.get(it.code).filter((x) => x !== it && it.code).sort((a, b) => b.live - a.live || a.best - b.best);
+    $('#sSibWrap').hidden = !sibs.length;
+    $('#sSib').innerHTML = sibs.slice(0, 12).map((x) => `<button class="sib" data-id="${esc(x.id)}">${x.images[0] ? `<img src="${sized(x.images[0], 240)}" loading="lazy" alt="">` : '<i></i>'}
+      <span>${esc([fabricOf(x), x.color].filter(Boolean).join(' · '))}</span><b>${x.live ? won(x.best) : '품절'}</b></button>`).join('');
+    paintLike();
+    showHistory(it);
     const fit = [...it.fit, ...it.details];
     $('#sFitWrap').hidden = !fit.length;
     $('#sFit').innerHTML = fit.map((t) => `<span class="pill">${esc(t)}</span>`).join('');
@@ -727,6 +836,7 @@
     $$('.nav, .view, footer').forEach((el) => { el.inert = true; }); // 상세가 열려 있는 동안 뒤 화면으로 포커스가 가지 않게
     $('#sGallery').scrollTo(0, 0);
     $('.info').scrollTo(0, 0);
+    $('.panel').scrollTo(0, 0);
     $('.panel .close').focus({ preventScroll: true });
     syncUrl();
   }
@@ -738,15 +848,69 @@
     document.body.classList.remove('lock');
     $$('.nav, .view, footer').forEach((el) => { el.inert = false; }); // 포커스를 되돌리기 전에 풀어야 함
     lastFocus?.focus({ preventScroll: true });
+    if (!$('#saved').hidden) renderSaved(); // 관심에서 뺐으면 바로 반영
     syncUrl();
+  }
+
+  // 관심 상품: 담을 때 최저가를 같이 저장해서, 나중에 내렸는지 보여줌
+  const liked = (id) => likes.some((x) => x.id === id);
+  function paintLike() {
+    const on = liked(current.id);
+    $('#sLike').textContent = on ? '♥ 관심' : '♡ 관심';
+    $('#sLike').classList.toggle('on', on);
+    $('#sLike').setAttribute('aria-pressed', on);
+    $('#likeCount').textContent = likes.length || '';
+  }
+  $('#sLike').onclick = () => {
+    likes = liked(current.id) ? likes.filter((x) => x.id !== current.id) : [{ id: current.id, krw: current.best, at: new Date().toISOString().slice(0, 10) }, ...likes];
+    keep('likes', likes);
+    paintLike();
+  };
+  $('#sSib').onclick = (e) => { const b = e.target.closest('[data-id]'); if (b) openSheet(byId.get(b.dataset.id)); };
+
+  function renderSaved() {
+    const saved = likes.map((x) => [byId.get(x.id), x]).filter(([it]) => it);
+    const cheaper = saved.filter(([it, x]) => it.live && it.best < x.krw).length;
+    $('#savedLead').textContent = saved.length
+      ? `${fmt.format(saved.length)}개${cheaper ? ` · 담았을 때보다 최저가가 내린 상품 ${cheaper}개` : ''}. 로그인 없이 이 기기에만 저장돼요.`
+      : '상품 상세에서 ♡ 관심을 누르면 여기 모여요. 담았을 때보다 최저가가 내리면 알려드려요. 로그인 없이 이 기기에만 저장돼요.';
+    $('#savedGrid').replaceChildren(...saved.map(([it, x], i) => card(it, i, it.live && it.best < x.krw ? `담을 때 ${won(x.krw)} → 지금 ${won(it.best)}` : '')));
+    const seen = recent.map((id) => byId.get(id)).filter(Boolean).slice(0, 12);
+    $('#recentWrap').hidden = !seen.length;
+    $('#recentGrid').replaceChildren(...seen.map((it, i) => card(it, i)));
+  }
+
+  // 최저가 변동: 기록(history.json)은 상세를 처음 열 때 한 번만 받음. 기록이 두 번 이상 바뀐 상품만 그래프
+  let priceHistory = null;
+  async function showHistory(it) {
+    $('#sHistWrap').hidden = true;
+    try { priceHistory ??= await (await fetch('history.json')).json(); } catch { return; }
+    const points = priceHistory[it.id];
+    if (current !== it || !points || points.length < 2) return;
+    const today = new Date(DATA.updated).toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
+    const line = [...points, [today, points.at(-1)[1]]]; // 마지막 가격을 오늘까지 이어 그림
+    const t0 = Date.parse(line[0][0]);
+    const t1 = Math.max(Date.parse(today), t0 + 864e5);
+    const prices = line.map(([, p]) => p);
+    const [lo, hi] = [Math.min(...prices), Math.max(...prices)];
+    const x = (d) => (((Date.parse(d) - t0) / (t1 - t0)) * 300).toFixed(1);
+    const y = (p) => (hi === lo ? 32 : 58 - ((p - lo) / (hi - lo)) * 52).toFixed(1);
+    const path = line.map(([d, p], i) => (i ? `H${x(d)}V${y(p)}` : `M${x(d)},${y(p)}`)).join(''); // 계단 모양: 가격은 바뀐 날까지 유지
+    const md = (d) => `${+d.slice(5, 7)}월 ${+d.slice(8, 10)}일`;
+    const peak = points.reduce((a, b) => (b[1] >= a[1] ? b : a));
+    const low = points.reduce((a, b) => (b[1] <= a[1] ? b : a));
+    $('#sHist').innerHTML = `<svg class="spark" viewBox="0 0 300 64" preserveAspectRatio="none" role="img" aria-label="최저가 변동 그래프"><path d="${path}" fill="none" stroke="currentColor" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>
+      <p class="fine">최고 ${won(peak[1])} (${md(peak[0])}) · 최저 ${won(low[1])} (${md(low[0])}) · ${md(points[0][0])}부터 기록${it.drop ? ` · 최근 2주 최고가보다 ${Math.round((1 - it.best / it.drop[1]) * 100)}% 내림` : ''}</p>`;
+    $('#sHistWrap').hidden = false;
   }
   $$('[data-close]').forEach((el) => { el.onclick = closeSheet; });
   addEventListener('keydown', (e) => { if (e.key === 'Escape') closeSheet(); });
   $('#sShare').onclick = async () => {
     try {
-      // 휴대폰은 기본 공유 창, 컴퓨터는 링크 복사
-      if (navigator.share && matchMedia('(pointer: coarse)').matches) await navigator.share({ title: `${current.name} · OWENS INDEX`, url: location.href });
-      else { await navigator.clipboard.writeText(location.href); $('#sShare').textContent = '링크 복사됨'; }
+      // 휴대폰은 기본 공유 창, 컴퓨터는 링크 복사. /i/상품 주소는 카카오톡 등에서 그 상품 사진·가격으로 미리보기가 뜸 (publish.mjs)
+      const url = `${location.origin}/i/${current.id}`;
+      if (navigator.share && matchMedia('(pointer: coarse)').matches) await navigator.share({ title: `${current.name} · OWENS INDEX`, url });
+      else { await navigator.clipboard.writeText(url); $('#sShare').textContent = '링크 복사됨'; }
     } catch { /* 공유 창을 그냥 닫은 경우 */ }
   };
 
@@ -763,7 +927,8 @@
   $('#q').value = initial.q ?? '';
   setState(initial, false);
   showView();
-  const shared = DATA.items.find((it) => it.id === params.get('item'));
+  $('#likeCount').textContent = likes.length || '';
+  const shared = byId.get(params.get('item'));
   if (shared) openSheet(shared);
   else if (Object.keys(initial).length && !location.hash) $('#catalog').scrollIntoView({ behavior: 'instant' });
 </script>

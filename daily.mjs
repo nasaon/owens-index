@@ -26,9 +26,9 @@ try {
   const odd = stores().filter((s) => s.count === 0 || (before.get(s.id) >= 10 && s.count < before.get(s.id) / 2))
     .map((s) => `${s.name}: ${before.get(s.id) ?? '?'}개 → ${s.count}개`);
   if (odd.length) await notify(`⚠️ [OWENS INDEX] 판매처 수집 확인 필요\n${odd.join('\n')}`);
-  run('git add public/data.js');
+  run('git add public/data.js public/history.json');
   if (spawnSync('git', ['diff', '--cached', '--quiet'], { cwd: here }).status === 1) {
-    run(`git commit -q -m "data ${new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' })}" -- public/data.js`); // 한국 날짜, 다른 수정 중인 파일은 빼고
+    run(`git commit -q -m "data ${new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' })}" -- public/data.js public/history.json`); // 한국 날짜, 다른 수정 중인 파일은 빼고
     run('git push -q');
   }
   run('npx wrangler pages deploy --branch main --commit-dirty=true');

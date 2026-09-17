@@ -1,6 +1,7 @@
 // 판매처 품번 읽기·매칭 자체 점검: node test.mjs
 import assert from 'node:assert/strict';
 import { offersFor, sizeKey } from './bot.mjs';
+import { bestPrice, track } from './publish.mjs';
 import { cleanSize, fromCode, kindOf, match, normColor, parseSku } from './stores.mjs';
 
 // 판매처마다 다른 품번 표기
@@ -52,4 +53,13 @@ const watched = { id: 'a', price: 100, sizes: [['48', true], ['50', false]], off
 const at50 = offersFor({ base: 'https://x' }, watched, '50');
 assert.deepEqual([at50.hit.map((r) => r.store), at50.maybe.map((r) => r.store)], [['svrn'], ['end']]);
 assert.deepEqual(offersFor({ base: 'https://x' }, watched, 'all').hit.map((r) => r.store), ['end', 'svrn', 'official']);
+
+// 최저가 기록: 1% 안쪽 변동은 무시, 5% 넘게 내리면 가격 내림, 같은 날 다시 돌리면 그날 값을 고침, 14일 창 직전 가격도 기준
+assert.equal(bestPrice(watched), 80);
+const priced = (id, price) => ({ id, price, sizes: [['M', true]] });
+let tracked = track({}, [priced('a', 1000), priced('b', 1000)], '2026-09-10');
+tracked = track(tracked.next, [priced('a', 995), priced('b', 930)], '2026-09-11');
+assert.deepEqual([tracked.next.a.length, tracked.next.b.length, [...tracked.drops]], [1, 2, [['b', ['2026-09-10', 1000]]]]);
+assert.deepEqual([...track(tracked.next, [priced('a', 995), priced('b', 1000)], '2026-09-11').drops], []);
+assert.deepEqual([...track({ c: [['2026-09-01', 1000]] }, [priced('c', 900)], '2026-09-21').drops], [['c', ['2026-09-01', 1000]]]);
 console.log('자체 점검 통과');

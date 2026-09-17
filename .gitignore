@@ -8,3 +8,4 @@ node_modules/
 daily.log
 bot.log
 watch.json
+public/i/
