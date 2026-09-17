@@ -396,13 +396,13 @@
       </div>
       <div class="world-side">
         <div class="row wrap" id="placeKinds"></div>
-        <input class="search" id="placeQ" type="search" placeholder="도시, 매장 이름" aria-label="매장 검색" autocomplete="off">
+        <input class="search" id="placeQ" type="search" placeholder="도시, 나라, 매장 이름" aria-label="매장 검색" autocomplete="off">
         <ul class="places" id="placeList"></ul>
         <button class="buy" id="addPlace">+ 매장 제보하기</button>
       </div>
     </div>
     <div class="place-card" id="placeCard" hidden></div>
-    <p class="src">공식 매장은 rickowens.eu 매장 안내, 국내 백화점은 각 백화점 층별 안내, 판매처 매장은 각 판매처 사이트 기준이에요. 판매처 매장은 릭오웬스 입고가 매장마다 달라서 방문 전에 확인해 주세요. 제보는 운영자가 확인한 뒤 올라가요. 지도 데이터 © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors</p>
+    <p class="src">공식 매장은 rickowens.eu 매장 안내, 국내 백화점·아울렛은 각 공식 층별 안내, 일본 매장은 각 매장 공식몰·블로그와 패션프레스 취급점 목록, 판매처 매장은 각 판매처 사이트 기준이에요(2026년 9월 확인). 편집샵·판매처 매장은 시즌마다 들여오는 게 달라서 방문 전에 확인해 주세요. 제보는 운영자가 확인한 뒤 올라가요. 지도 데이터 © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors</p>
   </div>
 
   <div class="block">
@@ -705,7 +705,7 @@
   renderRanks();
 
   // 전 세계 매장: 기본 목록(places.json: 공식 매장·백화점·판매처 매장) + 카페 회원 제보 중 승인된 것(/api/places)
-  const PLACE_KIND = { official: '공식 매장', dept: '백화점', retailer: '판매처 매장', select: '편집샵', outlet: '아울렛', vintage: '빈티지·중고', other: '기타' };
+  const PLACE_KIND = { official: '공식 매장', dept: '백화점', select: '편집샵', outlet: '아울렛', retailer: '판매처 매장', vintage: '빈티지·중고', other: '기타' };
   const SEOUL = [37.5665, 126.978];
   const km = ([a1, o1], [a2, o2]) => {
     const r = Math.PI / 180;
@@ -785,7 +785,8 @@
     $('#globeLabel').hidden = false;
     $('#globeLabel').innerHTML = `${esc(p.name)}<small>${far > 50 ? `서울에서 ${fmt.format(far)}km` : esc(p.city)}</small>`;
     const kind = p.user ? `카페 회원 제보${p.nick ? ` · ${p.nick}` : ''}` : PLACE_KIND[p.kind];
-    const map = `https://www.google.com/maps/search/?api=1&query=${p.lat},${p.lng}`;
+    // 매장 이름+주소로 찾아야 구글 지도에 매장 정보가 뜸 (제보는 주소 형식이 제각각이라 좌표로)
+    const map = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(p.user ? `${p.lat},${p.lng}` : `${p.name} ${p.address.split(' · ')[0]}`)}`;
     $('#placeCard').hidden = false;
     $('#placeCard').innerHTML = `<p class="eyebrow">${esc(kind)}</p><h4>${esc(p.name)}</h4>
       <p>${[p.address, [p.city, p.country].filter(Boolean).join(', ')].filter(Boolean).map(esc).join('<br>')}</p>
@@ -805,8 +806,8 @@
     $('#placeList').innerHTML = shown.map((p) => `<li><button data-id="${esc(p.id)}" aria-current="${p === picked}"><b>${esc(p.name)}</b><em>${p.user ? '제보' : PLACE_KIND[p.kind]}</em>
       <span>${esc([p.city, p.country].filter(Boolean).join(', '))} · 서울에서 ${fmt.format(km(SEOUL, [p.lat, p.lng]))}km</span></button></li>`).join('')
       || '<li><p class="fine">조건에 맞는 매장이 없어요.</p></li>';
-    const n = (kind) => places.filter((p) => is(p, kind)).length;
-    $('#placesNote').textContent = `공식 매장 ${n('official')}곳 · 백화점 ${n('dept')}곳 · 판매처 매장 ${n('retailer')}곳${n('user') ? ` · 카페 회원 제보 ${n('user')}곳` : ''}. 목록에서 고르면 지구본이 그곳으로 돌아가요.`;
+    const counts = kinds.slice(1).map(([k, label]) => `${label} ${places.filter((p) => is(p, k)).length}곳`);
+    $('#placesNote').textContent = `${counts.join(' · ')}. 목록에서 고르면 지구본이 그곳으로 돌아가요.`;
   }
   $('#placeKinds').onclick = (e) => { const b = e.target.closest('[data-kind]'); if (b) { placeKind = b.dataset.kind; renderPlaces(); } };
   $('#placeQ').oninput = renderPlaces;
