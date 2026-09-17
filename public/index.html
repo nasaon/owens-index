@@ -16,6 +16,8 @@
 <meta name="twitter:card" content="summary_large_image">
 <link rel="canonical" href="https://owens-index.pages.dev/">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14'/%3E%3Ctext x='32' y='43' font-family='Arial' font-size='28' font-weight='700' fill='white' text-anchor='middle'%3EOI%3C/text%3E%3C/svg%3E">
+<link rel="preconnect" href="https://cdn.jsdelivr.net" crossorigin>
+<link rel="preconnect" href="https://cdn.shopify.com">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css">
 <style>
   :root {
@@ -100,7 +102,9 @@
   .count { font-size: 13px; color: var(--mute); margin: 22px 0 0; }
 
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(calc(50% - 8px), 236px), 1fr)); gap: 36px 16px; margin-top: 18px; }
-  .card { text-align: left; background: none; border: 0; padding: 0; cursor: pointer; content-visibility: auto; contain-intrinsic-size: auto 420px; }
+  /* align-self: 버튼은 내용을 세로 가운데로 두어서, 같은 줄 옆 카드 이름이 두 줄이면 사진이 아래로 처짐 */
+  .card { align-self: start; text-align: left; background: none; border: 0; padding: 0; cursor: pointer; content-visibility: auto; contain-intrinsic-size: auto 420px; }
+  .card > span { display: block; } /* 버튼 안에는 span만 쓸 수 있어서 블록으로 */
   .ph { position: relative; aspect-ratio: 3 / 4; border-radius: 18px; overflow: hidden; background: var(--card); }
   .ph img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; filter: grayscale(1); transition: opacity .7s var(--ease), transform 1.3s var(--ease), filter .7s var(--ease); }
   .ph .b { opacity: 0; }
@@ -141,6 +145,7 @@
   .reasons { display: grid; gap: 22px; }
   .reasons h4 { font-size: 13px; color: var(--mute); font-weight: 500; margin-bottom: 10px; }
   .reasons .row { flex-wrap: wrap; overflow: visible; margin: 0; padding: 0; }
+  .reasons .chip { white-space: normal; max-width: 100%; } /* 긴 안내 문구가 좁은 폰에서 가로로 넘치지 않게 */
   .chip.plain { cursor: default; }
 
   .seasons { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(46%, 180px), 1fr)); gap: 10px; }
@@ -170,8 +175,11 @@
   .sheet.open { pointer-events: auto; }
   .sheet.open .bg { opacity: 1; }
   .sheet.open .panel { transform: none; }
-  .close { position: sticky; top: 12px; float: right; margin: 12px 12px 0 0; width: 36px; height: 36px; border-radius: 50%; border: 0; background: #222; cursor: pointer; font-size: 18px; z-index: 2; }
-  .gallery { display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 16px; scrollbar-width: none; }
+  /* 닫기 버튼 줄: 휴대폰에서 스크롤해도 위에 붙어 있고, 배경을 깔아 아래 내용(가격)이 버튼에 가려 보이지 않게 */
+  .sheet-bar { position: sticky; top: 0; z-index: 2; height: 60px; margin-bottom: -60px; display: flex; justify-content: flex-end; align-items: center; padding: 0 12px;
+    background: linear-gradient(#0a0a0a 60%, rgba(10, 10, 10, 0)); pointer-events: none; }
+  .close { pointer-events: auto; width: 36px; height: 36px; border-radius: 50%; border: 0; background: #222; cursor: pointer; font-size: 18px; }
+  .gallery { display: flex; gap: 10px; overflow-x: auto; scroll-snap-type: x mandatory; padding: 60px 16px 16px; scrollbar-width: none; }
   .gallery::-webkit-scrollbar { display: none; }
   .gallery img { flex: none; scroll-snap-align: center; width: min(440px, 80vw); aspect-ratio: 3 / 4; object-fit: cover; border-radius: 18px; background: #111; }
   .info { padding: 6px 22px 40px; display: grid; gap: 28px; }
@@ -207,8 +215,8 @@
   @media (min-width: 900px) {
     .sheet .panel { left: 50%; right: auto; top: 4vh; bottom: 4vh; width: min(1180px, 94vw); border-radius: 28px; border: 1px solid var(--line); transform: translate(-50%, 110%); display: grid; grid-template-columns: 1.1fr 1fr; overflow: hidden; }
     .sheet.open .panel { transform: translate(-50%, 0); }
-    .close { position: absolute; top: 16px; right: 16px; margin: 0; }
-    .gallery { flex-direction: column; overflow-y: auto; overflow-x: hidden; scroll-snap-type: y mandatory; }
+    .sheet-bar { position: absolute; top: 0; right: 0; height: auto; margin: 0; padding: 16px; background: none; }
+    .gallery { flex-direction: column; overflow-y: auto; overflow-x: hidden; scroll-snap-type: y mandatory; padding-top: 16px; }
     .gallery img { width: 100%; }
     .info { padding: 52px 40px; overflow-y: auto; align-content: start; }
   }
@@ -352,7 +360,7 @@
 <div class="sheet" id="sheet" aria-hidden="true">
   <div class="bg" data-close></div>
   <article class="panel" role="dialog" aria-modal="true" aria-labelledby="sName">
-    <button class="close" data-close aria-label="닫기">×</button>
+    <div class="sheet-bar"><button class="close" data-close aria-label="닫기">×</button></div>
     <div class="gallery" id="sGallery"></div>
     <div class="info">
       <div>
@@ -582,10 +590,29 @@
     low: (a, b) => a.best - b.best,
     high: (a, b) => b.best - a.best,
   };
+  // 상품명이 영어라 한국어로 찾을 때 영어 이름도 같이 찾음 (후드 → hood). 여러 단어면 모두 맞는 상품만
+  const ALIAS = [
+    ['후드|후디', 'hood'], ['맨투맨|스웻', 'sweat'], ['티셔츠|반팔|긴팔', 't-shirt|tee|\\bt\\b|\\bls\\b'], ['셔츠', 'shirt'], ['니트|스웨터', 'knit|sweater|pull'], ['가디건', 'cardigan'],
+    ['바지|팬츠', 'pant|trouser|bela|cargo|jean'], ['청바지|데님', 'jean|denim'], ['반바지|쇼츠', 'short'], ['치마|스커트', 'skirt'], ['원피스|드레스', 'dress|gown'],
+    ['자켓|재킷', 'jacket|jkt|flight'], ['코트', 'coat'], ['패딩|다운', 'down|padded|puffer|parka'], ['조끼|베스트', 'vest'], ['가죽|레더', 'leather'],
+    ['스니커즈|운동화', 'sneak'], ['부츠', 'boot|bogun|creeper'], ['샌들|슬리퍼', 'sandal|slide|slipper|chancla'], ['가방', 'bag|tote|pouch|clutch'], ['모자|캡|비니', 'hat|\\bcap|beanie'],
+    ['목걸이', 'necklace'], ['반지', '\\bring'], ['팔찌', 'bracelet'], ['선글라스|안경', 'sunglass|eyewear'], ['양말', 'sock'],
+    ['지오바스켓', 'geobasket'], ['라몬스', 'ramones'], ['카고', 'cargo'], ['벨라', 'bela'], ['다크쉐도우|드크쉐', 'drkshdw'], ['몽클', 'moncler'], ['닥터마틴|닥마', 'dr\\. martens'], ['릴리스', 'lilies'],
+  ];
+  // 별칭은 단어와 똑같은 것 우선 (청바지가 '바지'까지 걸리지 않게), 없으면 포함하는 것 (후드티 → 후드)
+  // 사이즈(42, XL)는 품번 속 숫자와 섞이지 않게 단어 단위로만 맞춤
+  const SIZE = /^(\d{1,2}½?|x{0,3}[sl]|m|uni)$/i;
+  const queryTerms = (q) => q.split(/\s+/).filter(Boolean).map((w) => {
+    const exact = ALIAS.filter(([ko]) => new RegExp(`^(${ko})$`).test(w));
+    const aliases = (exact.length ? exact : ALIAS.filter(([ko]) => new RegExp(ko).test(w))).map(([, en]) => en);
+    const word = w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    // 사이즈와 한두 글자 영어 단어(level t의 t)는 단어 단위로
+    return new RegExp([SIZE.test(w) || /^[a-z]{1,2}$/i.test(w) ? `(?<![\\w½])${word}(?![\\w½])` : word, ...aliases].join('|'), 'i');
+  });
   let list = [];
   let shown = 0;
   function render() {
-    const q = state.q.trim().toLowerCase();
+    const terms = queryTerms(state.q.trim());
     const base = DATA.items.filter((it) =>
       (state.gender === 'all' || it.gender === state.gender || it.gender === 'u') &&
       (state.line === 'all' || it.line === state.line) &&
@@ -596,7 +623,7 @@
       (!state.runway || it.runway) &&
       (!state.multi || (state.stock ? it.stores : it.o.length) > 1) &&
       (!state.stock || it.live) &&
-      (!q || `${it.name} ${it.code} ${it.category} ${it.fit.join(' ')} ${seasonLabel(it.season)} ${it.collab} ${it.line} ${it.where}`.toLowerCase().includes(q)));
+      terms.every((re) => re.test(`${it.name} ${it.code} ${it.category} ${it.fit.join(' ')} ${seasonLabel(it.season)} ${it.collab} ${it.line} ${it.where} ${[...(state.stock ? it.avail : it.all)].join(' ')}`)));
     // 사이즈 목록: 나머지 조건에 맞는 상품의 사이즈만 (재고만 보기면 어느 판매처든 재고 있는 사이즈)
     const sizes = [...new Set(base.flatMap((it) => [...(state.stock ? it.avail : it.all)]))].sort((a, b) => sizeRank(a) - sizeRank(b));
     if (state.size && !sizes.includes(state.size)) sizes.unshift(state.size);
@@ -630,10 +657,10 @@
     ].filter(Boolean).join('');
     const top = it.o[0];
     const where = top && it.stores > 1 ? `<span class="best">최저가 · ${it.stores}곳</span>` : top && top.store !== 'official' && it.live ? `<span class="at">${esc(STORES[top.store]?.name)}</span>` : '';
-    el.innerHTML = `<div class="ph">${tags ? `<div class="tags">${tags}</div>` : ''}${it.images[0] ? `<img class="a" src="${sized(it.images[0], 600)}" loading="lazy" decoding="async" alt="">` : ''}</div>
-      <p class="name">${esc(it.name)}</p>
-      <p class="price">${won(it.best)}${where}</p>
-      <p class="sub">${[it.category, GENDER[it.gender], seasonLabel(it.season)].filter(Boolean).map(esc).join(' · ')}</p>`;
+    el.innerHTML = `<span class="ph">${tags ? `<span class="tags">${tags}</span>` : ''}${it.images[0] ? `<img class="a" src="${sized(it.images[0], 600)}" loading="lazy" decoding="async" alt="">` : ''}</span>
+      <span class="name">${esc(it.name)}</span>
+      <span class="price">${won(it.best)}${where}</span>
+      <span class="sub">${[it.category, GENDER[it.gender], seasonLabel(it.season)].filter(Boolean).map(esc).join(' · ')}</span>`;
     // 두 번째 사진은 처음 마우스를 올릴 때만 불러옴
     if (it.images[1]) {
       el.addEventListener('pointerenter', () => {

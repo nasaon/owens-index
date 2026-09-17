@@ -151,7 +151,7 @@ for (const group of extra) {
     sizes: [...new Set(group.filter((x) => x.stock).flatMap((x) => x.sizes))].map((s) => [s, true]),
     price: Math.min(...group.map(krw)),
     images: [...new Set(group.map((x) => x.image).filter(Boolean))].slice(0, 4),
-    added: '',
+    added: group.map((x) => x.added).filter(Boolean).sort()[0] ?? '', // 판매처 중 가장 먼저 올라온 날 (날짜를 안 주는 곳은 빼고)
     ext: 1,
     offers: rows(group),
   });

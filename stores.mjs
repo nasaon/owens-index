@@ -93,6 +93,7 @@ async function shopify(base, handles, read) {
         url: `${base}/products/${p.handle}`,
         sizes: live.map((v) => cleanSize(i >= 0 ? v[`option${i + 1}`] : v.title)),
         image: p.images[0]?.src ?? '',
+        added: (p.published_at ?? p.created_at ?? '').slice(0, 10), // 판매처에 올라온 날 (공식몰에 없는 상품의 신상품순 기준)
       });
     }
   }
@@ -132,6 +133,7 @@ async function lncc() {
           url,
           sizes: p.variants.filter((v) => v.orderable).map((v) => cleanSize(v.variationValues?.size)),
           image: p.image?.disBaseLink ?? '',
+          added: p.representedProduct.c_onlineDate ?? '',
         });
       }
     }
