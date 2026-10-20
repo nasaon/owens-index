@@ -1,6 +1,6 @@
 // 릭오웬스 공식몰(rickowens.eu)과 다른 판매처 상품을 받아 사이트용 public/data.js로 저장: node build.mjs
 import { publish } from './publish.mjs';
-import { EXCLUDED, STORES, UNSUPPORTED, cleanSize, collect, fromCode, kindOf, match } from './stores.mjs';
+import { EXCLUDED, STORES, UNSUPPORTED, cleanSize, collect, fetchRetry, fromCode, kindOf, match } from './stores.mjs';
 
 // 한국 마켓: 원화 가격, 한국에서 살 수 있는 상품 기준
 const BASE = 'https://www.rickowens.eu/en-kr';
@@ -12,12 +12,12 @@ const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 async function products(path) {
   const out = [];
   for (let page = 1; ; page++) {
-    const res = await fetch(`${BASE}${path}?limit=250&page=${page}`, { headers: { 'user-agent': UA } });
+    const res = await fetchRetry(`${BASE}${path}?limit=250&page=${page}`, { headers: { 'user-agent': UA } });
     if (!res.ok) throw new Error(`${path} HTTP ${res.status}`);
     const { products: batch } = await res.json();
+    await sleep(400); // 공식몰에 부담 주지 않게 요청 간격 (다음 컬렉션으로 넘어갈 때도)
     if (!batch.length) return out;
     out.push(...batch);
-    await sleep(400); // 공식몰에 부담 주지 않게 요청 간격
   }
 }
 const ids = async (handle) => new Set((await products(`/collections/${handle}/products.json`)).map((p) => p.id));

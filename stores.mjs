@@ -3,9 +3,24 @@
 const UA = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0 Safari/537.36';
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// 요청이 많다는 거절(429)·서버 오류(5xx)·연결 실패(노트북이 막 깨서 DNS가 안 될 때 등)는 쉬었다가 다시 받음 (Retry-After가 있으면 그만큼, 최대 2분)
+// 한 번 거절로 그날 갱신이 통째로 빠지지 않게 (10월 공식몰 429로 사흘 빠짐). 끝까지 안 되면 마지막 응답·오류를 그대로 넘김
+export async function fetchRetry(url, init, waits = [5, 20, 60]) {
+  for (const wait of waits) {
+    try {
+      const res = await fetch(url, init);
+      if (res.status !== 429 && res.status < 500) return res;
+      await sleep(Math.min(120, Number(res.headers.get('retry-after')) || wait) * 1000);
+    } catch {
+      await sleep(wait * 1000);
+    }
+  }
+  return fetch(url, init);
+}
+
 async function get(url) {
   // localization=KR: Shopify 판매처는 한국 마켓(원화·한국 배송 상품)으로 보여줌
-  const res = await fetch(url, { headers: { 'user-agent': UA, 'accept-language': 'ko-KR,ko;q=0.9,en;q=0.8', cookie: 'localization=KR' } });
+  const res = await fetchRetry(url, { headers: { 'user-agent': UA, 'accept-language': 'ko-KR,ko;q=0.9,en;q=0.8', cookie: 'localization=KR' } });
   if (!res.ok) throw new Error(`${new URL(url).host} HTTP ${res.status}`);
   await sleep(500); // 판매처에 부담 주지 않게 요청 간격
   return res;
@@ -148,7 +163,9 @@ async function end() {
   const out = [];
   for (let page = 1; ; page++) {
     const html = await (await get(`https://www.endclothing.com/kr/brands/rick-owens?page=${page}`)).text();
-    const next = JSON.parse(html.match(/<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/)[1]);
+    const raw = html.match(/<script id="__NEXT_DATA__" type="application\/json">([\s\S]*?)<\/script>/)?.[1];
+    if (!raw) throw new Error(/maintenance/i.test(html) ? '사이트 점검 중' : `${page}쪽에 상품 데이터가 없음 (페이지 구조가 바뀜)`); // 2026-10-21 전체 점검
+    const next = JSON.parse(raw);
     const { results } = findKey(next, 'initialAlgoliaState') ?? {};
     for (const h of results?.hits ?? []) {
       const parsed = parseSku(h.sku);

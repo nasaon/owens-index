@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { offersFor, sizeKey } from './bot.mjs';
 import { onRequestPost } from './functions/api/places.js';
 import { bestPrice, track } from './publish.mjs';
-import { cleanSize, fromCode, kindOf, match, normColor, parseSku } from './stores.mjs';
+import { cleanSize, fetchRetry, fromCode, kindOf, match, normColor, parseSku } from './stores.mjs';
 
 // 판매처마다 다른 품번 표기
 const sku = (s) => { const p = parseSku(s); return p && [p.code, p.fabric, p.color, p.glued].join('|'); };
@@ -63,6 +63,15 @@ tracked = track(tracked.next, [priced('a', 995), priced('b', 930)], '2026-09-11'
 assert.deepEqual([tracked.next.a.length, tracked.next.b.length, [...tracked.drops]], [1, 2, [['b', ['2026-09-10', 1000]]]]);
 assert.deepEqual([...track(tracked.next, [priced('a', 995), priced('b', 1000)], '2026-09-11').drops], []);
 assert.deepEqual([...track({ c: [['2026-09-01', 1000]] }, [priced('c', 900)], '2026-09-21').drops], [['c', ['2026-09-01', 1000]]]);
+
+// 다시 받기: 429·연결 실패 뒤 성공하면 그 응답, 404는 바로, 끝까지 5xx면 마지막 응답 그대로 (쉬는 시간 0초로 시험)
+const replies = (...list) => { globalThis.fetch = async () => { const r = list.shift(); if (r instanceof Error) throw r; return new Response('', { status: r }); }; };
+replies(429, new Error('fetch failed'), 200);
+assert.equal((await fetchRetry('https://x', {}, [0, 0, 0])).status, 200);
+replies(404, 200);
+assert.equal((await fetchRetry('https://x', {}, [0, 0, 0])).status, 404);
+replies(503, 502, 500);
+assert.equal((await fetchRetry('https://x', {}, [0, 0])).status, 500);
 
 // 매장 제보 API: 이상한 입력은 거르고, 봇 칸은 저장 없이 성공인 척, 종류·링크는 허용된 값만
 const saved = [];
