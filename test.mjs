@@ -1,5 +1,6 @@
 // 판매처 품번 읽기·매칭 자체 점검: node test.mjs
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { offersFor, sizeKey } from './bot.mjs';
 import { onRequestPost } from './functions/api/places.js';
 import { bestPrice, keepAdded, track } from './publish.mjs';
@@ -92,6 +93,15 @@ meta('{"ships_to_countries":["JP","KR"]}');
 assert.equal(await shipsOnlyTo('https://x'), null);
 meta('<html>');
 assert.equal(await shipsOnlyTo('https://x'), null);
+
+// 사이즈 변환(public/size.js): 한국 사이즈 → 상품 표기(허리가 공식표 사이 값이면 양옆 둘 다), 상품 표기 → 한국
+const size = new Function(`${readFileSync(new URL('./public/size.js', import.meta.url), 'utf8')}; return { labelsFor, korean };`)();
+assert.deepEqual([...size.labelsFor('m', 'top', ['95'])], ['48', 'S']);
+assert.deepEqual([...size.labelsFor('w', 'top', ['95'])], ['42', 'M']);
+assert.deepEqual([...size.labelsFor('m', 'bottom', ['31'])], ['48', 'S', '30', '50', 'M', '32', '31']);
+assert.deepEqual([...size.labelsFor('w', 'bottom', ['38'])], []); // 여성 공식표 밖, 릭오웬스 38(XS)로 착각하면 안 됨
+assert.deepEqual(['48', 'M', '31', 'UNI'].map((z) => size.korean('m', 'bottom', z)), ['30', '32', '31', '']);
+assert.deepEqual(['40', 'XS', '48', '42/44'].map((z) => size.korean('w', 'top', z)), ['55', '44', '110', '']);
 
 // 매장 제보 API: 이상한 입력은 거르고, 봇 칸은 저장 없이 성공인 척, 종류·링크는 허용된 값만
 const saved = [];
