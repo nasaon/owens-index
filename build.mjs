@@ -110,7 +110,7 @@ try {
   const { result, rates, time_last_update_utc: at } = await (await fetch('https://open.er-api.com/v6/latest/KRW')).json();
   if (result !== 'success') throw new Error(result);
   fx = { date: new Date(at).toISOString().slice(0, 10) };
-  for (const c of ['EUR', 'USD', 'KWD']) fx[c] = Math.round(100 / rates[c]) / 100;
+  for (const c of ['EUR', 'USD', 'KWD', 'JPY']) fx[c] = Math.round(100 / rates[c]) / 100;
 } catch (e) {
   console.log(`환율 못 받음 (${e.message}): 외화 판매처는 빼고 저장`);
 }
@@ -125,7 +125,10 @@ const { matched, extra, unsure } = match(items, offers);
 for (const it of items) if (matched.has(it.id)) it.offers = rows(matched.get(it.id));
 
 // 공식몰에 없는 상품(지난 시즌 등): 이름·사진·분류는 판매처 정보로. 이름은 이 순서로 정돈된 곳 것을 씀
-const PREFER = ['lncc', 'end', 'antonioli', 'amamaniere', 'baseblu', 'svrn', 'dsm-ny', 'dsm-london', 'gate194', 'atelier', 'hirshleifers', 'thahab', 'nugnes', 'grifo210', 'wiberlux'];
+const PREFER = ['lncc', 'end', 'antonioli', 'amamaniere', 'baseblu', 'svrn', 'dsm-ny', 'dsm-london', 'gate194', 'atelier', 'hirshleifers', 'thahab', 'nugnes', 'grifo210', 'wiberlux',
+  'machine-a', '082plus', 'cherry', 'amanojak'];
+// 판매처가 지난 시즌 상품을 이제 올려도 신상품이 아님: 그 시즌 판매가 끝날 무렵(SS 6월 말·FW 12월 말)보다 늦은 등록일은 그날로
+const seasonEnd = (s) => (/^(SS|FW)\d{2}$/.test(s) ? `20${s.slice(2)}-${s.startsWith('SS') ? '06-30' : '12-31'}` : '');
 const taken = new Set(items.map((it) => it.id));
 for (const group of extra) {
   group.sort((a, b) => PREFER.indexOf(a.store) - PREFER.indexOf(b.store));
@@ -136,15 +139,19 @@ for (const group of extra) {
   while (taken.has(id)) id += '-';
   taken.add(id);
   const [kind, category] = kindOf(group.map((x) => x.kind).join(' '));
+  const meta = fromCode(o.code);
+  const first = group.map((x) => x.added).filter(Boolean).sort()[0] ?? ''; // 판매처 중 가장 먼저 올라온 날 (날짜를 안 주는 곳은 빼고)
+  const end = seasonEnd(meta.season);
   items.push({
     id,
     code: o.code,
     fabric,
     color,
-    // 'Rick Owens - Men’s Concordian Coat - (Black)', 'HIGH CUT SNEAKER (MENS)', 'Tommy T in Black' → 'CONCORDIAN COAT', 'HIGH CUT SNEAKER', 'TOMMY T'
-    name: o.name.replace(/^rick owens( drkshdw| lilies)?\s*-?\s*/i, '').replace(/^(wo)?men['’]?s?\s+/i, '')
-      .replace(/\s*-\s*\([^)]*\)\s*$|\s*\((wo)?mens?\)\s*$|\s+in\s+[a-z/ ]+$/i, '').replace(/^릭오웬스\s*/, '').trim().toUpperCase(),
-    ...fromCode(o.code),
+    // 'Rick Owens - Men’s Concordian Coat - (Black)', 'HIGH CUT SNEAKER (MENS)', 'Tommy T in Black', '【RICK OWENS】 GEOBASKET -LCOLCB-', 'TOWER F/W 26 2 PIECE FLIGHT'
+    // → 'CONCORDIAN COAT', 'HIGH CUT SNEAKER', 'TOMMY T', 'GEOBASKET', '2 PIECE FLIGHT'
+    name: o.name.replace(/【[^】]*】\s*/g, '').replace(/^[A-Z]+ [FS]\/[WS] \d{2}\s+|^×\s*(dr\. martens|champion|moncler)\s+/i, '').replace(/^rick owens( drkshdw| lilies)?\s*-?\s*/i, '').replace(/^(wo)?men['’]?s?\s+/i, '')
+      .replace(/\s*-\s*\([^)]*\)\s*$|\s*\((wo)?mens?\)\s*$|\s+in\s+[a-z/ ]+$|\s*-[A-Z0-9]+-$/i, '').replace(/^릭오웬스\s*/, '').trim().toUpperCase(),
+    ...meta,
     runway: false,
     group: kind,
     category,
@@ -154,7 +161,7 @@ for (const group of extra) {
     sizes: [...new Set(group.filter((x) => x.stock).flatMap((x) => x.sizes))].map((s) => [s, true]),
     price: Math.min(...group.map(krw)),
     images: [...new Set(group.map((x) => x.image).filter(Boolean))].slice(0, 4),
-    added: group.map((x) => x.added).filter(Boolean).sort()[0] ?? '', // 판매처 중 가장 먼저 올라온 날 (날짜를 안 주는 곳은 빼고)
+    added: end && first > end ? end : first,
     ext: 1,
     offers: rows(group),
   });

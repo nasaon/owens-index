@@ -153,11 +153,12 @@
   .chip.plain { cursor: default; }
 
   .seasons { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(46%, 180px), 1fr)); gap: 10px; }
-  .season { display: grid; align-content: space-between; gap: 18px; min-height: 132px; padding: 18px; border: 1px solid var(--line); border-radius: 20px; background: none; text-align: left; color: inherit; }
+  .season { display: grid; align-content: space-between; gap: 18px; min-height: 132px; padding: 18px; border: 1px solid var(--line); border-radius: 20px; background: none; text-align: left; color: inherit; container-type: inline-size; }
   .season.has { cursor: pointer; background: linear-gradient(160deg, #141415, #000 80%); }
   .season.has:hover { border-color: #666; }
   .season .code { font-size: 12px; letter-spacing: .2em; color: var(--mute); }
-  .season b { display: block; margin-top: 6px; font-size: clamp(20px, 2vw, 26px); letter-spacing: -.03em; line-height: 1; overflow-wrap: anywhere; }
+  /* 긴 이름(CONCORDIANS)이 단어 중간에서 끊기지 않게 글자 수(--n)만큼 줄임: 대문자 한 글자 폭은 글자 크기의 0.69배 이하 */
+  .season b { display: block; margin-top: 6px; font-size: clamp(20px, 2vw, 26px); font-size: min(clamp(20px, 2vw, 26px), 135cqi / var(--n, 1)); letter-spacing: -.03em; line-height: 1; overflow-wrap: anywhere; }
   .season .cnt { font-size: 12px; color: var(--mute); line-height: 1.5; }
   .season.has .cnt { color: var(--fg); }
   .codes { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 220px), 1fr)); gap: 10px; margin-top: 10px; }
@@ -571,7 +572,7 @@
   const GROUPS = [['all', '전체'], ['tops', '상의'], ['bottoms', '하의'], ['outer', '아우터'], ['dress', '드레스'], ['shoes', '신발'], ['acc', '액세서리'], ['etc', '기타']];
   const STORES = Object.fromEntries((DATA.stores ?? []).map((s) => [s.id, s]));
   const OFFICIAL = { id: 'official', name: 'Rick Owens 공식몰', where: '한국 마켓', currency: 'KRW' };
-  const CURRENCY = { EUR: '€', USD: '$', KWD: 'KD ' };
+  const CURRENCY = { EUR: '€', USD: '$', KWD: 'KD ', JPY: '¥' };
 
   // 시즌 이름 (공식몰 아카이브·Wikipedia·패션 매체 기준)
   const SEASONS = [
@@ -668,7 +669,7 @@
       <div><b>${esc(s.name)}</b><p class="meta">${esc(s.where)} · ${s.currency === 'KRW' ? '원화' : `${s.currency} → 원화 환산`}</p></div>
       <p class="num"><strong>${fmt.format(n ?? 0)}</strong>개${linked}${(DATA.failed ?? []).includes(s.id) ? ' · 오늘 수집 실패' : ''}</p></a>`;
   }).join('');
-  $('#fxNote').innerHTML = fx.date ? `환율(${esc(fx.date)}): ${['EUR', 'USD', 'KWD'].filter((c) => fx[c]).map((c) => `1 ${c} = ${won(fx[c])}`).join(' · ')} · <a href="https://www.exchangerate-api.com" target="_blank" rel="noopener">Rates By Exchange Rate API</a>` : '';
+  $('#fxNote').innerHTML = fx.date ? `환율(${esc(fx.date)}): ${['EUR', 'USD', 'KWD', 'JPY'].filter((c) => fx[c]).map((c) => (c === 'JPY' ? `100 JPY = ${won(fx[c] * 100)}` : `1 ${c} = ${won(fx[c])}`)).join(' · ')} · <a href="https://www.exchangerate-api.com" target="_blank" rel="noopener">Rates By Exchange Rate API</a>` : '';
   $('#unsupported').innerHTML = (DATA.unsupported ?? []).map(([why, list]) => `<div><h4>${esc(why)}</h4><div class="row">${list.map(([name, url]) => `<a class="chip" href="${esc(url)}" target="_blank" rel="noopener">${esc(name)} ↗</a>`).join('')}</div></div>`).join('');
   $('#excluded').innerHTML = (DATA.excluded ?? []).map(([why, list]) => `<div><h4>${esc(why)}</h4><div class="row">${list.map((name) => `<span class="chip plain">${esc(name)}</span>`).join('')}</div></div>`).join('');
 
@@ -873,7 +874,7 @@
     const n = countBy('season', code);
     const tag = n ? 'button' : 'div';
     return `<${tag} class="season reveal${n ? ' has' : ''}" style="--d:${(i % 6) * 40}ms" ${n ? `data-season="${code}"` : ''}>
-      <span><span class="code">${code}</span><b>${name}</b></span><span class="cnt">${n ? `판매 중 ${fmt.format(n)}개 →` : '아카이브'}</span></${tag}>`;
+      <span><span class="code">${code}</span><b style="--n:${name.length}">${name}</b></span><span class="cnt">${n ? `판매 중 ${fmt.format(n)}개 →` : '아카이브'}</span></${tag}>`;
   }).join('');
   const collabNames = [...new Set(DATA.items.map((it) => it.collab).filter(Boolean))];
   $('#collabList').innerHTML = [...COLLABS, ...collabNames.filter((c) => !COLLABS.some(([, b]) => b === c)).map((c) => ['NOW', c, '공식몰 협업 컬렉션'])]
@@ -1187,7 +1188,8 @@
     const points = priceHistory[it.id];
     if (current !== it || !points || points.length < 2) return;
     const today = new Date(DATA.updated).toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
-    const line = [...points, [today, points.at(-1)[1]]]; // 마지막 가격을 오늘까지 이어 그림
+    // 오늘은 지금 최저가로 (기록은 1% 넘게 바뀐 날만 남겨서 마지막 기록과 조금 다를 수 있음), 품절이면 마지막 가격을 이어 그림
+    const line = [...points, [today, it.live ? it.best : points.at(-1)[1]]];
     const t0 = Date.parse(line[0][0]);
     const t1 = Math.max(Date.parse(today), t0 + 864e5);
     const prices = line.map(([, p]) => p);
@@ -1196,8 +1198,8 @@
     const y = (p) => (hi === lo ? 32 : 58 - ((p - lo) / (hi - lo)) * 52).toFixed(1);
     const path = line.map(([d, p], i) => (i ? `H${x(d)}V${y(p)}` : `M${x(d)},${y(p)}`)).join(''); // 계단 모양: 가격은 바뀐 날까지 유지
     const md = (d) => `${+d.slice(5, 7)}월 ${+d.slice(8, 10)}일`;
-    const peak = points.reduce((a, b) => (b[1] >= a[1] ? b : a));
-    const low = points.reduce((a, b) => (b[1] <= a[1] ? b : a));
+    const peak = line.reduce((a, b) => (b[1] > a[1] ? b : a));
+    const low = line.reduce((a, b) => (b[1] < a[1] ? b : a));
     $('#sHist').innerHTML = `<svg class="spark" viewBox="0 0 300 64" preserveAspectRatio="none" role="img" aria-label="최저가 변동 그래프"><path d="${path}" fill="none" stroke="currentColor" stroke-width="2" vector-effect="non-scaling-stroke"/></svg>
       <p class="fine">최고 ${won(peak[1])} (${md(peak[0])}) · 최저 ${won(low[1])} (${md(low[0])}) · ${md(points[0][0])}부터 기록${it.drop ? ` · 최근 2주 최고가보다 ${Math.round((1 - it.best / it.drop[1]) * 100)}% 내림` : ''}</p>`;
     $('#sHistWrap').hidden = false;

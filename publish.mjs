@@ -6,6 +6,7 @@ export const SITE = 'https://owens-index.pages.dev';
 const file = (name) => new URL(`public/${name}`, import.meta.url);
 const esc = (s) => String(s ?? '').replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]);
 const kstDay = (iso) => new Date(iso).toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
+const readData = () => { const src = readFileSync(file('data.js'), 'utf8'); return JSON.parse(src.slice(src.indexOf('{'), src.lastIndexOf('}') + 1)); };
 const daysBefore = (day, n) => new Date(Date.parse(day) - n * 864e5).toISOString().slice(0, 10);
 
 // 지금 재고가 있는 곳 중 최저가 (사이트 상세와 같은 계산). 어디에도 재고가 없으면 null
@@ -66,7 +67,14 @@ function sharePages(head, items) {
   }
 }
 
+// 공식몰·판매처가 상품을 내렸다 다시 올리면 등록일이 새로 찍혀 지난 상품이 NEW·신상품순 맨 앞에 뜸 → 전날 data.js의 날짜가 더 이르면 그대로 둠
+export function keepAdded(before, items) {
+  const was = new Map(before.map((it) => [it.id, it.added]));
+  for (const it of items) if (was.get(it.id) && (!it.added || was.get(it.id) < it.added)) it.added = was.get(it.id);
+}
+
 export function publish(head, items) {
+  if (existsSync(file('data.js'))) keepAdded(readData().items, items);
   const historyFile = file('history.json');
   const { next, drops } = track(existsSync(historyFile) ? JSON.parse(readFileSync(historyFile, 'utf8')) : {}, items, kstDay(head.updated));
   for (const it of items) {
@@ -81,7 +89,6 @@ export function publish(head, items) {
 }
 
 if (process.argv[1]?.endsWith('publish.mjs')) {
-  const src = readFileSync(file('data.js'), 'utf8');
-  const { items, ...head } = JSON.parse(src.slice(src.indexOf('{'), src.lastIndexOf('}') + 1));
+  const { items, ...head } = readData();
   console.log(`다시 씀: ${items.length}개, 가격 내림 ${publish(head, items)}개`);
 }

@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { offersFor, sizeKey } from './bot.mjs';
 import { onRequestPost } from './functions/api/places.js';
-import { bestPrice, track } from './publish.mjs';
+import { bestPrice, keepAdded, track } from './publish.mjs';
 import { cleanSize, fetchRetry, fromCode, kindOf, match, normColor, parseSku } from './stores.mjs';
 
 // 판매처마다 다른 품번 표기
@@ -19,11 +19,13 @@ assert.deepEqual(['09', '0909', '0911', '911'].map(normColor), ['9', '909', '911
 assert.deepEqual(['Size EU 52', 'wshoeseu_EU 36', 'wrtwstd_S', '40-구매가능(당일발송)', '39.5', 'Default Title'].map(cleanSize), ['52', '36', 'S', '40', '39½', 'UNI']);
 assert.deepEqual(['Size OS', 'Size US L', 'Size 31', '6,5', undefined, 'O/S'].map(cleanSize), ['UNI', 'L', '31', '6½', 'UNI', 'UNI']);
 assert.deepEqual(['2X', 'LGE', 'IT 50 / US 32', '41 | 8', '50-52', 'MENS 9', 'WOMENS 8½', 'MENS 9,5'].map(cleanSize), ['XXL', 'L', '50', '41', '50-52', '42', '38½', '42½']);
+assert.deepEqual(['UK 6(約25cm相当)', '41(約26cm相当)'].map(cleanSize), ['6', '41']); // amanojak.
 
 // 공식몰에 없는 상품의 분류·시즌
 assert.deepEqual(kindOf("Men's Jeans Bolan Bootcut Jeans"), ['bottoms', '하의']);
 assert.deepEqual(kindOf('RICK OWENS, 남성 스니커즈, RU02F4891 LCO 911'), ['shoes', '신발']);
 assert.deepEqual(kindOf('Jackets Hooded Outershirt'), ['outer', '아우터']);
+assert.deepEqual(['CARGO JKT', 'SECCHIA FLIGHT', 'MASTODON TRENCH', 'ACCESORIES PYRAMID CHARM', 'KEY HOLDER BIG PENTAGRAM'].map((t) => kindOf(t)[0]), ['outer', 'outer', 'outer', 'acc', 'acc']);
 assert.deepEqual(fromCode('DU01E6274'), { season: 'SS25', line: 'DRKSHDW', collab: '' });
 assert.deepEqual(fromCode('RU17S1234'), { season: 'SS17', line: 'RICK OWENS', collab: '' });
 assert.deepEqual(fromCode('DM02F1814'), { season: 'FW26', line: 'RICK OWENS', collab: 'Dr. Martens' });
@@ -47,6 +49,10 @@ assert.deepEqual([...matched].map(([id, os]) => [id, os.map((o) => o.store)]), [
 ]);
 assert.deepEqual(unsure.map((o) => o.store), ['dsm-london']);
 assert.deepEqual(extra.map((g) => g.map((o) => o.store)), [['dsm-ny', 'dsm-london'], ['antonioli']]);
+// 품번 뒤가 원단뿐이고 색상 이름도 못 맞춘 곳(MACHINE-A·amanojak.): 원단까지 같은 공식몰 상품이 여럿이면 어느 색인지 몰라 빼고, 원단이 다르면 새 상품, 후보가 하나면 붙임
+const fabricOnly = (store, code, fabric) => ({ store, code, fabric, color: '', glued: '', colorName: '' });
+const loose = match(items, [fabricOnly('machine-a', 'RU02F4372', 'TE'), fabricOnly('amanojak', 'RU02F4372', 'XYZ'), fabricOnly('amanojak', 'RR02F4219', 'HFLBE1')]);
+assert.deepEqual([loose.unsure.map((o) => o.fabric), loose.extra.map((g) => g[0].fabric), [...loose.matched.keys()]], [['TE'], ['XYZ'], ['rr02f4219hflbe10909']]);
 
 // 관심 상품 알림: 사이즈 글자 → 텔레그램 링크용, 그 사이즈 재고가 있는 곳만 싼 순 (사이즈를 안 알려주는 곳은 따로)
 assert.deepEqual(['39½', 'MENS 9', '50 / US 32', 'UNI'].map(sizeKey), ['39h', 'MENS-9', '50-US-32', 'UNI']);
@@ -63,6 +69,10 @@ tracked = track(tracked.next, [priced('a', 995), priced('b', 930)], '2026-09-11'
 assert.deepEqual([tracked.next.a.length, tracked.next.b.length, [...tracked.drops]], [1, 2, [['b', ['2026-09-10', 1000]]]]);
 assert.deepEqual([...track(tracked.next, [priced('a', 995), priced('b', 1000)], '2026-09-11').drops], []);
 assert.deepEqual([...track({ c: [['2026-09-01', 1000]] }, [priced('c', 900)], '2026-09-21').drops], [['c', ['2026-09-01', 1000]]]);
+// 등록일: 전날 날짜가 더 이르면 유지 (다시 올린 상품이 NEW로 뜨지 않게), 전날 없던 상품·날짜를 몰랐던 상품은 오늘 값
+const today = [{ id: 'a', added: '2026-10-20' }, { id: 'b', added: '2026-10-20' }, { id: 'c', added: '2026-09-01' }];
+keepAdded([{ id: 'a', added: '2026-06-12' }, { id: 'c', added: '' }], today);
+assert.deepEqual(today.map((it) => it.added), ['2026-06-12', '2026-10-20', '2026-09-01']);
 
 // 다시 받기: 429·연결 실패 뒤 성공하면 그 응답, 404는 바로, 끝까지 5xx면 마지막 응답 그대로 (쉬는 시간 0초로 시험)
 const replies = (...list) => { globalThis.fetch = async () => { const r = list.shift(); if (r instanceof Error) throw r; return new Response('', { status: r }); }; };

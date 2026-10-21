@@ -50,6 +50,7 @@ export function cleanSize(s) {
   const us = t.match(/^(MENS|WOMENS)\s+(\d+)([.,]5|½)?$/i);
   if (us) t = `${Number(us[2]) + (/^w/i.test(us[1]) ? 30 : 33)}${us[3] ? '½' : ''}`;
   t = LETTER[t.toUpperCase()] ?? t;
+  t = t.replace(/\s*[(（].*$/, ''); // '41(約26cm相当)' → 41
   return /^(default title|os|one ?size|o\/s|uni|tu)?$/i.test(t) ? 'UNI' : t.replace(/[.,]5$/, '½'); // 사이즈 없음 = 원사이즈
 }
 
@@ -57,8 +58,8 @@ export function cleanSize(s) {
 const KINDS = [
   ['shoes', '신발', /\b(sneak\w*|boots?|shoes?|sandals?|slides?|slippers?|loafers?|derby|mules?|geobasket|ramones|creepers?|footwear|trainers?)\b|스니커즈|부츠|신발|샌들|슬리퍼|로퍼/i],
   ['acc', '가방', /\b(bags?|pouch|totes?|backpacks?|clutch|wallets?)\b|가방|파우치|지갑|백팩/i],
-  ['acc', '액세서리', /\b(belts?|hats?|caps?|beanies?|gloves?|scarf|scarves|socks?|rings?|necklaces?|bracelets?|earrings?|jewel\w*|eyewear|sunglasses|glasses|masks?|keychains?|accessor\w*)\b|벨트|모자|캡|비니|장갑|스카프|머플러|양말|반지|목걸이|팔찌|귀걸이|선글라스|안경|주얼리/i],
-  ['outer', '아우터', /\b(jackets?|coats?|bombers?|parkas?|blazers?|vests?|gilets?|outerwear|anorak|peacoat)\b|재킷|자켓|코트|점퍼|패딩|베스트|블레이저|아우터/i],
+  ['acc', '액세서리', /\b(belts?|hats?|caps?|beanies?|gloves?|scarf|scarves|socks?|rings?|necklaces?|bracelets?|earrings?|jewel\w*|eyewear|sunglasses|glasses|masks?|keychains?|key ?holders?|charms?|pendants?|acces?sor\w*)\b|벨트|모자|캡|비니|장갑|스카프|머플러|양말|반지|목걸이|팔찌|귀걸이|선글라스|안경|주얼리/i],
+  ['outer', '아우터', /\b(jackets?|jkts?|coats?|trench\w*|bombers?|flights?|parkas?|blazers?|vests?|gilets?|outerwear|anorak|peacoat)\b|재킷|자켓|코트|점퍼|패딩|베스트|블레이저|아우터/i],
   ['dress', '드레스', /\b(dress(es)?|gowns?)\b|드레스|원피스/i],
   ['bottoms', '하의', /\b(pants?|trousers?|jeans?|denim|shorts?|skirts?|leggings?|cargos?|joggers?|bottoms?)\b|팬츠|바지|청바지|데님|쇼츠|반바지|스커트|레깅스|조거/i],
   ['tops', '상의', /\b(t-?shirts?|tees?|shirts?|tops?|tanks?|hood(ie|ed)?s?|sweat\w*|knit\w*|sweaters?|cardigans?|polos?|jumpers?|pullovers?|longsleeve|level)\b|티셔츠|셔츠|탑|후드|스웻|맨투맨|니트|스웨터|가디건/i],
@@ -74,7 +75,11 @@ export function fromCode(code) {
   return { season, line: prefix === 'LI' ? 'LILIES' : /^D[USAL]$/.test(prefix) ? 'DRKSHDW' : 'RICK OWENS', collab };
 }
 
+const plain = (html) => String(html ?? '').replace(/<[^>]+>/g, ' ').replace(/&nbsp;/g, ' ');
+const optionOf = (p, v, re) => v[`option${p.options.findIndex((o) => re.test(o.name)) + 1}`]; // 옵션 이름으로 값 찾기 (없으면 undefined)
+
 // Shopify 판매처: 컬렉션의 products.json을 전부 받아 상품(색상별) 목록으로
+// read(상품, 옵션) → { sku, colorName, fabricOnly: 품번 뒤에 원단만 붙여 쓰는 곳, kind: 분류에 쓸 글자 (기본은 상품 종류+제목) }
 async function shopify(base, handles, read) {
   const seen = new Map();
   for (const handle of handles) {
@@ -86,22 +91,25 @@ async function shopify(base, handles, read) {
   }
   const out = [];
   for (const p of seen.values()) {
-    const i = p.options.findIndex((o) => /size|사이즈/i.test(o.name));
+    const i = p.options.findIndex((o) => /size|사이즈|サイズ/i.test(o.name));
     const groups = new Map(); // 한 상품에 색상이 여러 개면 색상별로 나눔
     for (const v of p.variants) {
       const info = read(p, v);
       const parsed = info && parseSku(info.sku);
       if (!parsed) continue;
+      // 'RR02F4828LOOEC'처럼 품번 뒤에 원단만 붙여 쓰는 곳: 붙은 글자를 원단으로 (색상은 이름으로 맞춤)
+      // 끝이 숫자 두 자리 이상이면(LHOJP09) 색상까지 붙은 것이라 그대로 둠 → match()가 알려진 색상으로 나눔
+      if (info.fabricOnly && parsed.glued && !/\d\d$/.test(parsed.glued)) Object.assign(parsed, { fabric: parsed.glued, glued: '' });
       const key = parsed.color || parsed.glued;
-      if (!groups.has(key)) groups.set(key, { ...parsed, colorName: info.colorName ?? '', variants: [] });
+      if (!groups.has(key)) groups.set(key, { ...parsed, colorName: info.colorName ?? '', kind: info.kind, variants: [] });
       groups.get(key).variants.push(v);
     }
-    for (const { variants, ...g } of groups.values()) {
+    for (const { variants, kind, ...g } of groups.values()) {
       const live = variants.filter((v) => v.available);
       out.push({
         ...g,
-        name: p.title,
-        kind: `${p.product_type} ${p.title}`,
+        name: plain(p.title).replace(/\s+/g, ' ').trim(), // 제목에 줄바꿈 태그를 넣는 곳이 있음 (cherry·amanojak.)
+        kind: kind ?? `${p.product_type} ${p.title}`,
         gender: /\b(wom[ae]n'?s?|femme|donna)\b/i.test(`${p.title} ${p.product_type} ${p.tags.join(' ')} ${p.collection}`) ? 'w'
           : /\b(m[ae]n'?s?|uomo|homme)\b/i.test(`${p.title} ${p.product_type} ${p.tags.join(' ')} ${p.collection}`) ? 'm' : '',
         price: Math.min(...(live.length ? live : variants).map((v) => Number(v.price))),
@@ -266,6 +274,19 @@ export const STORES = [
     collect: () => shopify('https://www.grifo210.com', ['men-rick-owens', 'women-rick-owens', 'men-rick-owens-drkshdw', 'women-rick-owens-drkshdw', 'men-moncler-rick-owens', 'women-moncler-rick-owens'],
       (p, v) => ({ sku: v.sku?.replace(/-[^-]*$/, '') })) }, // 'RU02F4788NPD309-36' → 끝의 사이즈를 떼고 읽음
   { id: 'wiberlux', name: '위버럭스', where: '한국', currency: 'KRW', home: 'https://wiberlux.com/category/rick-owens/4934/', collect: wiberlux },
+  // 2026-10 추가: Shopify 한국 마켓(원화)이 있거나 한국으로 배송하는 곳 (meta.json ships_to_countries에 KR)
+  { id: 'machine-a', name: 'MACHINE-A', where: '영국', currency: 'KRW', home: 'https://www.machine-a.com/collections/designer-rick-owens',
+    // 설명의 'Style Code' 뒤: 'RR01F2889LVSX'(품번+원단), 'RO02C1669 KSTWSR 09', 'RR02D6716LHOJP09'처럼 상품마다 다름
+    collect: () => shopify('https://www.machine-a.com', ['designer-rick-owens'], (p, v) => ({
+      sku: plain(p.body_html).split(/Style Code:?/)[1], colorName: optionOf(p, v, /colou?r/i), fabricOnly: true })) },
+  { id: 'cherry', name: 'cherry fukuoka', where: '일본', currency: 'KRW', home: 'https://cherry-fukuoka.com/collections/rick-owens',
+    collect: () => shopify('https://cherry-fukuoka.com', ['rick-owens'], (p, v) => ({ sku: v.sku })) }, // 'RR02F4736NBFO 009'
+  { id: 'amanojak', name: 'amanojak.', where: '일본', currency: 'KRW', home: 'https://www.amanojak.jp/collections/rick-owens',
+    // 설명의 'ITEM CODE RR02F4828LOOEC' (품번+원단). 상품 종류 칸엔 시즌(2026AW)이 들어 있어 분류는 태그로
+    collect: () => shopify('https://www.amanojak.jp', ['rick-owens', 'drkshdw', 'rick-owens-shoes'], (p, v) => ({
+      sku: plain(p.body_html).match(/ITEM CODE\s+([A-Z0-9]+)/)?.[1], colorName: optionOf(p, v, /カラー|colou?r/i), fabricOnly: true, kind: `${p.title} ${p.tags.join(' ')}` })) },
+  { id: '082plus', name: '082+', where: '일본', currency: 'JPY', home: 'https://082plus.com/collections/rick-owens-drkshdw',
+    collect: () => shopify('https://082plus.com', ['rick-owens-drkshdw', 'rick-owens', 'rick-owens-x-champion'], (p) => ({ sku: plain(p.body_html) })) }, // 설명 끝의 'DU02F6786 DRK 34'
 ];
 
 // 자동으로 가격을 못 가져오는 곳과 이유 (사이트 '판매처' 목록에 그대로 나감)
@@ -286,6 +307,7 @@ export const UNSUPPORTED = [
   ]],
   ['품번이 없어 같은 상품인지 확정 불가', [
     ['Browns', 'https://www.brownsfashion.com/collections/rick-owens-man'],
+    ['NUBIAN', 'https://nubiantokyo.com/collections/rick-owens'], ['Eraldo', 'https://www.eraldo.com/collections/uomo-rick-owens-526'],
     ['페칭 · SSENSE·Mytheresa·YOOX 매물을 원화로 모아 봄', 'https://fetching.co.kr/brand/62'],
   ]],
 ];
@@ -342,7 +364,8 @@ export function match(items, offers) {
     // 같은 품번·색상이라도 원단이 다르면 다른 상품 (가죽·나일론 버전 등, 가격도 다름). 원단을 모르는 곳만 원단 없이 판단
     if (o.fabric) hit = hit.filter((it) => sameFabric(fabricOf(it), o.fabric));
     if (hit.length === 1) matched.set(hit[0].id, [...(matched.get(hit[0].id) ?? []), o]);
-    else if (hit.length > 1 || (!o.color && !o.fabric && cands.length)) unsure.push(o);
+    // 색상을 모르면 원단까지 같은 공식몰 상품이 있을 때 (원단도 모르면 품번만 같아도) 어느 색인지 몰라서 뺌
+    else if (hit.length > 1 || (!o.color && cands.some((it) => !o.fabric || sameFabric(fabricOf(it), o.fabric)))) unsure.push(o);
     else rest.push(o);
   }
   // 공식몰에 없는 상품: 품번+색상이 같고 원단이 겹치면 한 상품 (원단을 모르는 곳은 원단이 가장 긴 쪽에 붙임)
