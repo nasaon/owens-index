@@ -1,6 +1,6 @@
 // 릭오웬스 공식몰(rickowens.eu)과 다른 판매처 상품을 받아 사이트용 public/data.js로 저장: node build.mjs
 import { publish } from './publish.mjs';
-import { EXCLUDED, STORES, UNSUPPORTED, cleanSize, collect, fetchRetry, fromCode, kindOf, match } from './stores.mjs';
+import { EXCLUDED, FORWARDERS, STORES, UNSUPPORTED, cleanSize, collect, fetchRetry, fromCode, kindOf, match } from './stores.mjs';
 
 // 한국 마켓: 원화 가격, 한국에서 살 수 있는 상품 기준
 const BASE = 'https://www.rickowens.eu/en-kr';
@@ -103,7 +103,7 @@ for (const p of all) {
 if (items.length < 1000) throw new Error(`상품이 ${items.length}개뿐이라 저장하지 않음`);
 
 console.log('다른 판매처 상품 받는 중…');
-const { offers: got, failed } = await collect();
+const { offers: got, failed, forward } = await collect();
 // 외화 → 원화. 환율을 못 받으면 그날은 원화 판매처만 비교
 let fx = null;
 try {
@@ -126,7 +126,7 @@ for (const it of items) if (matched.has(it.id)) it.offers = rows(matched.get(it.
 
 // 공식몰에 없는 상품(지난 시즌 등): 이름·사진·분류는 판매처 정보로. 이름은 이 순서로 정돈된 곳 것을 씀
 const PREFER = ['lncc', 'end', 'antonioli', 'amamaniere', 'baseblu', 'svrn', 'dsm-ny', 'dsm-london', 'gate194', 'atelier', 'hirshleifers', 'thahab', 'nugnes', 'grifo210', 'wiberlux',
-  'machine-a', '082plus', 'cherry', 'amanojak'];
+  'machine-a', '082plus', 'cherry', 'amanojak', 'mou', 'midwest'];
 // 판매처가 지난 시즌 상품을 이제 올려도 신상품이 아님: 그 시즌 판매가 끝날 무렵(SS 6월 말·FW 12월 말)보다 늦은 등록일은 그날로
 const seasonEnd = (s) => (/^(SS|FW)\d{2}$/.test(s) ? `20${s.slice(2)}-${s.startsWith('SS') ? '06-30' : '12-31'}` : '');
 const taken = new Set(items.map((it) => it.id));
@@ -147,9 +147,9 @@ for (const group of extra) {
     code: o.code,
     fabric,
     color,
-    // 'Rick Owens - Men’s Concordian Coat - (Black)', 'HIGH CUT SNEAKER (MENS)', 'Tommy T in Black', '【RICK OWENS】 GEOBASKET -LCOLCB-', 'TOWER F/W 26 2 PIECE FLIGHT'
-    // → 'CONCORDIAN COAT', 'HIGH CUT SNEAKER', 'TOMMY T', 'GEOBASKET', '2 PIECE FLIGHT'
-    name: o.name.replace(/【[^】]*】\s*/g, '').replace(/^[A-Z]+ [FS]\/[WS] \d{2}\s+|^×\s*(dr\. martens|champion|moncler)\s+/i, '').replace(/^rick owens( drkshdw| lilies)?\s*-?\s*/i, '').replace(/^(wo)?men['’]?s?\s+/i, '')
+    // 'Rick Owens - Men’s Concordian Coat - (Black)', 'HIGH CUT SNEAKER (MENS)', 'Tommy T in Black', '【RICK OWENS】 GEOBASKET -LCOLCB-', 'TOWER F/W 26 2 PIECE FLIGHT', 'Rick Owens × CHAMPION TARP T'
+    // → 'CONCORDIAN COAT', 'HIGH CUT SNEAKER', 'TOMMY T', 'GEOBASKET', '2 PIECE FLIGHT', 'TARP T'
+    name: o.name.replace(/【[^】]*】\s*/g, '').replace(/^[A-Z]+ [FS]\/[WS] \d{2}\s+/i, '').replace(/^rick owens( drkshdw| lilies)?\s*-?\s*/i, '').replace(/^×\s*(dr\.? ?martens|champion|moncler)\s+/i, '').replace(/^(wo)?men['’]?s?\s+/i, '')
       .replace(/\s*-\s*\([^)]*\)\s*$|\s*\((wo)?mens?\)\s*$|\s+in\s+[a-z/ ]+$|\s*-[A-Z0-9]+-$/i, '').replace(/^릭오웬스\s*/, '').trim().toUpperCase(),
     ...meta,
     runway: false,
@@ -170,10 +170,11 @@ const linked = Map.groupBy([...matched.values()].flat(), (o) => o.store);
 
 const head = {
   updated: new Date().toISOString(), base: BASE, img: IMG, fx, failed,
-  stores: STORES.map(({ id, name, where, currency, home }) => ({ id, name, where, currency, home,
+  stores: STORES.map(({ id, name, where, currency, home }) => ({ id, name, where, currency, home, forward: forward[id],
     count: offers.filter((o) => o.store === id).length, matched: linked.get(id)?.length ?? 0 })),
   unsupported: UNSUPPORTED,
   excluded: EXCLUDED,
+  forwarders: FORWARDERS,
 };
 const drops = publish(head, items); // data.js·최저가 기록·상품별 공유 페이지
 const count = (key) => Object.entries(items.reduce((m, it) => ((m[it[key]] = (m[it[key]] ?? 0) + 1), m), {}));

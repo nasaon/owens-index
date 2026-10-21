@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { offersFor, sizeKey } from './bot.mjs';
 import { onRequestPost } from './functions/api/places.js';
 import { bestPrice, keepAdded, track } from './publish.mjs';
-import { cleanSize, fetchRetry, fromCode, kindOf, match, normColor, parseSku } from './stores.mjs';
+import { cleanSize, fetchRetry, fromCode, kindOf, match, normColor, parseSku, shipsOnlyTo } from './stores.mjs';
 
 // 판매처마다 다른 품번 표기
 const sku = (s) => { const p = parseSku(s); return p && [p.code, p.fabric, p.color, p.glued].join('|'); };
@@ -20,6 +20,7 @@ assert.deepEqual(['Size EU 52', 'wshoeseu_EU 36', 'wrtwstd_S', '40-구매가능(
 assert.deepEqual(['Size OS', 'Size US L', 'Size 31', '6,5', undefined, 'O/S'].map(cleanSize), ['UNI', 'L', '31', '6½', 'UNI', 'UNI']);
 assert.deepEqual(['2X', 'LGE', 'IT 50 / US 32', '41 | 8', '50-52', 'MENS 9', 'WOMENS 8½', 'MENS 9,5'].map(cleanSize), ['XXL', 'L', '50', '41', '50-52', '42', '38½', '42½']);
 assert.deepEqual(['UK 6(約25cm相当)', '41(約26cm相当)'].map(cleanSize), ['6', '41']); // amanojak.
+assert.deepEqual(['UK8(270)', 'UK9.5(285)', 'UK7', '6.5 UK M', '420', '365', '-', 'FREE'].map(cleanSize), ['8', '9½', '7', '6½', '42', '36½', 'UNI', 'UNI']); // mou·082+·MIDWEST
 
 // 공식몰에 없는 상품의 분류·시즌
 assert.deepEqual(kindOf("Men's Jeans Bolan Bootcut Jeans"), ['bottoms', '하의']);
@@ -82,6 +83,15 @@ replies(404, 200);
 assert.equal((await fetchRetry('https://x', {}, [0, 0, 0])).status, 404);
 replies(503, 502, 500);
 assert.equal((await fetchRetry('https://x', {}, [0, 0])).status, 500);
+
+// 배대지 필요: meta.json 배송 국가에 KR이 없을 때만 그 나라 목록, Shopify가 아니면(HTML) 배송하는 것으로
+const meta = (body) => { globalThis.fetch = async () => new Response(body); };
+meta('{"ships_to_countries":["JP"]}');
+assert.deepEqual(await shipsOnlyTo('https://x/collections/a'), ['JP']);
+meta('{"ships_to_countries":["JP","KR"]}');
+assert.equal(await shipsOnlyTo('https://x'), null);
+meta('<html>');
+assert.equal(await shipsOnlyTo('https://x'), null);
 
 // 매장 제보 API: 이상한 입력은 거르고, 봇 칸은 저장 없이 성공인 척, 종류·링크는 허용된 값만
 const saved = [];

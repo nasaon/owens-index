@@ -423,6 +423,13 @@
   </div>
 
   <div class="block">
+    <h3>배대지</h3>
+    <p class="note">'배대지 필요'인 판매처는 한국으로 배송하지 않아요. 그 판매처가 배송하는 나라에 센터가 있는 배대지 주소로 받아 주세요. 미국은 판매세가 없는 오리건(OR)·델라웨어(DE) 센터가 유리하고, 일본 국내 배송 가격에는 소비세 10%가 들어 있어요.</p>
+    <div class="reasons" id="forwarders"></div>
+    <p class="src">센터는 각 배대지 공식 사이트 기준이에요(2026년 10월 확인). 요금은 무게·부피와 배송 방법(항공·해상)에 따라 달라서 각 사이트에서 확인해 주세요.</p>
+  </div>
+
+  <div class="block">
     <h3>지원하지 않는 곳</h3>
     <p class="note">자동 접속을 막아 둔 곳은 우회하지 않아요. 대신 상품마다 <b>Google 쇼핑 품번 검색</b> 링크를 달아 두었으니, 그곳 가격은 직접 확인해 주세요.</p>
     <div class="reasons" id="unsupported"></div>
@@ -660,18 +667,32 @@
 
   // 판매처 화면
   const fx = DATA.fx ?? {};
-  $('#storesLead').innerHTML = `공식몰을 포함해 <b>${storeCount}곳</b>의 가격과 재고를 매일 모아요. 외화 가격은 그날 환율로 원화로 바꿔 보여줘요. 해외 판매처는 관부가세·배송비가 따로 붙을 수 있어서 실제 결제 금액은 판매처에서 확인해 주세요.`;
+  $('#storesLead').innerHTML = `공식몰을 포함해 <b>${storeCount}곳</b>의 가격과 재고를 매일 모아요. 외화 가격은 그날 환율로 원화로 바꿔 보여줘요. 해외 판매처는 관부가세·배송비가 따로 붙을 수 있어서 실제 결제 금액은 판매처에서 확인해 주세요. '배대지 필요'라고 적힌 곳은 한국으로 배송하지 않아서 배대지(현지 주소)로 받아야 해요.`;
   $('#storeList').innerHTML = [OFFICIAL, ...(DATA.stores ?? [])].map((s, i) => {
     const n = s.id === 'official' ? DATA.items.filter((it) => !it.ext).length : s.count;
     const linked = s.id === 'official' ? '' : ` · 공식몰 상품과 연결 ${fmt.format(s.matched)}개`;
     const home = s.id === 'official' ? `${DATA.base}/collections/all-products` : s.home;
     return `<a class="store reveal" style="--d:${(i % 4) * 50}ms" href="${esc(home)}" target="_blank" rel="noopener">
-      <div><b>${esc(s.name)}</b><p class="meta">${esc(s.where)} · ${s.currency === 'KRW' ? '원화' : `${s.currency} → 원화 환산`}</p></div>
+      <div><b>${esc(s.name)}</b><p class="meta">${esc(s.where)} · ${s.currency === 'KRW' ? '원화' : `${s.currency} → 원화 환산`}${s.forward ? ' · 배대지 필요' : ''}</p></div>
       <p class="num"><strong>${fmt.format(n ?? 0)}</strong>개${linked}${(DATA.failed ?? []).includes(s.id) ? ' · 오늘 수집 실패' : ''}</p></a>`;
   }).join('');
   $('#fxNote').innerHTML = fx.date ? `환율(${esc(fx.date)}): ${['EUR', 'USD', 'KWD', 'JPY'].filter((c) => fx[c]).map((c) => (c === 'JPY' ? `100 JPY = ${won(fx[c] * 100)}` : `1 ${c} = ${won(fx[c])}`)).join(' · ')} · <a href="https://www.exchangerate-api.com" target="_blank" rel="noopener">Rates By Exchange Rate API</a>` : '';
   $('#unsupported').innerHTML = (DATA.unsupported ?? []).map(([why, list]) => `<div><h4>${esc(why)}</h4><div class="row">${list.map(([name, url]) => `<a class="chip" href="${esc(url)}" target="_blank" rel="noopener">${esc(name)} ↗</a>`).join('')}</div></div>`).join('');
   $('#excluded').innerHTML = (DATA.excluded ?? []).map(([why, list]) => `<div><h4>${esc(why)}</h4><div class="row">${list.map((name) => `<span class="chip plain">${esc(name)}</span>`).join('')}</div></div>`).join('');
+  // 배대지: 나라마다 센터가 있는 곳 (판매처의 forward = 한국 대신 배송하는 나라 중 센터가 있는 곳, build가 매일 판단)
+  const COUNTRY = { JP: '일본', US: '미국', GB: '영국', DE: '독일', FR: '프랑스', ES: '스페인', IT: '이탈리아', KW: '쿠웨이트' };
+  const FORWARDERS = DATA.forwarders ?? [];
+  $('#forwarders').innerHTML = Object.entries(COUNTRY).map(([c, label]) => {
+    const list = FORWARDERS.filter((f) => c in f.centers);
+    return `<div><h4>${label}</h4><div class="row">${list.length ? list.map((f) => `<a class="chip" href="${esc(f.url)}" target="_blank" rel="noopener">${esc(f.name)}${f.centers[c] ? ` · ${esc(f.centers[c])}` : ''} ↗</a>`).join('')
+      : '<span class="chip plain">센터 있는 곳 없음 · 판매처가 배송하는 다른 나라 센터로</span>'}</div></div>`;
+  }).join('');
+  // 상세 안내용: 판매처 나라에 센터가 있으면 그 나라만, 없으면 판매처가 배송하는 다른 나라 센터
+  const forwardVia = (s) => {
+    const home = s.forward.filter((c) => COUNTRY[c] === s.where);
+    return (home.length ? home : s.forward).flatMap((c) => FORWARDERS.filter((f) => c in f.centers).map((f) =>
+      `<a href="${esc(f.url)}" target="_blank" rel="noopener">${esc(f.name)}(${COUNTRY[c] ?? c}${f.centers[c] ? ` ${esc(f.centers[c])}` : ''}) ↗</a>`)).join(' · ');
+  };
 
   // 온라인 판매처 순위 (오늘 데이터): 할인 폭은 판매처 자기 정가 대비라 관부가세와 상관없는 비교
   // ponytail: 판매처끼리 가격 비교 순위는 뺌 (해외가는 관부가세 전이라 늘 싸 보임), 세후 가격을 알게 되면 추가
@@ -1106,12 +1127,13 @@
       const orig = x.orig && s.currency !== 'KRW' ? `<small>${CURRENCY[s.currency] ?? ''}${fmt.format(x.orig)}</small>` : '';
       const sizes = !x.live ? '<em>품절</em>' : x.sizes.length ? x.sizes.map((z) => `<span${z === state.size || pick.includes(z) ? ' class="pick"' : ''}>${esc(z)}</span>`).join('') : '<em>재고 있음 · 사이즈는 판매처에서 확인</em>';
       return `<li><a class="offer${x.live ? '' : ' out'}" href="${esc(x.url)}" target="_blank" rel="noopener">
-        <span class="who">${i === 0 && x.live && it.o.length > 1 ? '<span class="badge">최저가</span>' : ''}<b>${esc(s.name)}</b><span>${esc(s.where)}</span></span>
+        <span class="who">${i === 0 && x.live && it.o.length > 1 ? '<span class="badge">최저가</span>' : ''}<b>${esc(s.name)}</b><span>${esc(s.where)}${s.forward ? ' · 배대지' : ''}</span></span>
         <span class="amt">${won(x.krw)}${orig}</span><span class="sz">${sizes}</span></a></li>`;
     }).join('');
     const search = encodeURIComponent(`Rick Owens ${it.code}${it.color ? ` ${it.color}` : ''}`);
     const abroad = it.o.some((x) => x.store !== 'official' && STORES[x.store]?.where !== '한국');
-    $('#sFine').innerHTML = `${abroad ? '해외 판매처는 관부가세(보통 상품가의 10~25%)와 배송비가 따로 붙을 수 있어요. ' : ''}${it.o.some((x) => x.orig) && fx.date ? `외화 가격은 ${esc(fx.date)} 환율로 바꾼 값이에요. ` : ''}SSENSE처럼 자동 확인이 막힌 곳은 <a href="https://www.google.com/search?udm=28&q=${search}" target="_blank" rel="noopener">Google 쇼핑에서 품번 검색 ↗</a>`;
+    const fwd = [...new Set(it.o.map((x) => STORES[x.store]).filter((s) => s?.forward))];
+    $('#sFine').innerHTML = `${abroad ? '해외 판매처는 관부가세(보통 상품가의 10~25%)와 배송비가 따로 붙을 수 있어요. ' : ''}${fwd.map((s) => `${esc(s.name)} 상품은 한국으로 배송되지 않아 배대지로 받아야 해요(배대지 비용 별도)${s.forward.length ? `: ${forwardVia(s)}` : ''}. `).join('')}${it.o.some((x) => x.orig) && fx.date ? `외화 가격은 ${esc(fx.date)} 환율로 바꾼 값이에요. ` : ''}SSENSE처럼 자동 확인이 막힌 곳은 <a href="https://www.google.com/search?udm=28&q=${search}" target="_blank" rel="noopener">Google 쇼핑에서 품번 검색 ↗</a>`;
     $('#sCat').innerHTML = [it.category, GENDER[it.gender], it.collab && `× ${it.collab}`, it.runway && '런웨이 피스', it.ext && '공식몰 미판매'].filter(Boolean).map((t) => `<span class="pill">${esc(t)}</span>`).join('');
     $('#sAlertWrap').hidden = !owner;
     if (owner) $('#sAlert').innerHTML = [...[...it.all].sort((a, b) => sizeRank(a) - sizeRank(b)), '전체'].map((z) =>

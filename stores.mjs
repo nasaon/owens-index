@@ -43,15 +43,17 @@ const cleanName = (s) => String(s ?? '').toUpperCase().replace(/[^A-Z]/g, '').re
 
 // 사이즈 표기를 공식몰 표기로 맞춤: 'Size EU 52' → 52, 'Size US L' → L, 'IT 50 / US 32' → 50, 'wshoeseu_EU 36' → 36,
 // '40-구매가능(당일발송)' → 40, 39.5·6,5 → 39½·6½, LGE·2X → L·XXL, 미국 신발 'MENS 9' → 42 (공식몰 표: 남성 EU = US+33, 여성 EU = US+30)
+// 닥터마틴 협업 UK 사이즈는 공식몰처럼 숫자만 ('UK8(270)'·'6.5 UK M' → 8·6½), mou 신발 '420'·'365' = EU 42·36½
 const LETTER = { '2X': 'XXL', '2XL': 'XXL', '3X': 'XXXL', '3XL': 'XXXL', LGE: 'L', MED: 'M', SML: 'S', XSM: 'XS' };
 export function cleanSize(s) {
-  let t = String(s ?? '').replace(/^[a-z]+_/, '').replace(/^size\s+/i, '').replace(/^(EU|IT|FR|UK)\s+|^US\s+(?=(X{0,2}S|M|X{0,3}L)$)/i, '')
-    .replace(/-(?!\d).*$/, '').replace(/\s+[/|]\s+.*$/, '').trim();
+  let t = String(s ?? '').replace(/^[a-z]+_/, '').replace(/^size\s+/i, '').replace(/^(EU|IT|FR|UK)(\s+|(?=\d))|^US\s+(?=(X{0,2}S|M|X{0,3}L)$)/i, '')
+    .replace(/-(?!\d).*$/, '').replace(/\s+[/|]\s+.*$/, '').replace(/\s+UK\s+[MW]$/i, '').trim();
   const us = t.match(/^(MENS|WOMENS)\s+(\d+)([.,]5|½)?$/i);
   if (us) t = `${Number(us[2]) + (/^w/i.test(us[1]) ? 30 : 33)}${us[3] ? '½' : ''}`;
   t = LETTER[t.toUpperCase()] ?? t;
   t = t.replace(/\s*[(（].*$/, ''); // '41(約26cm相当)' → 41
-  return /^(default title|os|one ?size|o\/s|uni|tu)?$/i.test(t) ? 'UNI' : t.replace(/[.,]5$/, '½'); // 사이즈 없음 = 원사이즈
+  t = t.replace(/^([34]\d)([05])$/, (_, n, half) => (half === '5' ? `${n}½` : n));
+  return /^(default title|os|one ?size|o\/s|uni|tu|free)?$/i.test(t) ? 'UNI' : t.replace(/[.,]5$/, '½'); // 사이즈 없음 = 원사이즈 (일본 FREE)
 }
 
 // 공식몰에 없는 상품의 분류 (판매처 상품 종류 + 이름, 영어·한국어)
@@ -79,7 +81,7 @@ const plain = (html) => String(html ?? '').replace(/<[^>]+>/g, ' ').replace(/&nb
 const optionOf = (p, v, re) => v[`option${p.options.findIndex((o) => re.test(o.name)) + 1}`]; // 옵션 이름으로 값 찾기 (없으면 undefined)
 
 // Shopify 판매처: 컬렉션의 products.json을 전부 받아 상품(색상별) 목록으로
-// read(상품, 옵션) → { sku, colorName, fabricOnly: 품번 뒤에 원단만 붙여 쓰는 곳, kind: 분류에 쓸 글자 (기본은 상품 종류+제목) }
+// read(상품, 옵션) → { sku, colorName, fabricOnly: 품번 뒤에 원단만 붙여 쓰는 곳, kind: 분류에 쓸 글자 (기본은 상품 종류+제목), name: 제목에서 뽑은 이름 (기본은 제목) }
 async function shopify(base, handles, read) {
   const seen = new Map();
   for (const handle of handles) {
@@ -101,14 +103,14 @@ async function shopify(base, handles, read) {
       // 끝이 숫자 두 자리 이상이면(LHOJP09) 색상까지 붙은 것이라 그대로 둠 → match()가 알려진 색상으로 나눔
       if (info.fabricOnly && parsed.glued && !/\d\d$/.test(parsed.glued)) Object.assign(parsed, { fabric: parsed.glued, glued: '' });
       const key = parsed.color || parsed.glued;
-      if (!groups.has(key)) groups.set(key, { ...parsed, colorName: info.colorName ?? '', kind: info.kind, variants: [] });
+      if (!groups.has(key)) groups.set(key, { ...parsed, colorName: info.colorName ?? '', kind: info.kind, name: info.name ?? p.title, variants: [] });
       groups.get(key).variants.push(v);
     }
-    for (const { variants, kind, ...g } of groups.values()) {
+    for (const { variants, kind, name, ...g } of groups.values()) {
       const live = variants.filter((v) => v.available);
       out.push({
         ...g,
-        name: plain(p.title).replace(/\s+/g, ' ').trim(), // 제목에 줄바꿈 태그를 넣는 곳이 있음 (cherry·amanojak.)
+        name: plain(name).replace(/\s+/g, ' ').trim(), // 제목에 줄바꿈 태그를 넣는 곳이 있음 (cherry·amanojak.)
         kind: kind ?? `${p.product_type} ${p.title}`,
         gender: /\b(wom[ae]n'?s?|femme|donna)\b/i.test(`${p.title} ${p.product_type} ${p.tags.join(' ')} ${p.collection}`) ? 'w'
           : /\b(m[ae]n'?s?|uomo|homme)\b/i.test(`${p.title} ${p.product_type} ${p.tags.join(' ')} ${p.collection}`) ? 'm' : '',
@@ -277,8 +279,12 @@ export const STORES = [
   // 2026-10 추가: Shopify 한국 마켓(원화)이 있거나 한국으로 배송하는 곳 (meta.json ships_to_countries에 KR)
   { id: 'machine-a', name: 'MACHINE-A', where: '영국', currency: 'KRW', home: 'https://www.machine-a.com/collections/designer-rick-owens',
     // 설명의 'Style Code' 뒤: 'RR01F2889LVSX'(품번+원단), 'RO02C1669 KSTWSR 09', 'RR02D6716LHOJP09'처럼 상품마다 다름
-    collect: () => shopify('https://www.machine-a.com', ['designer-rick-owens'], (p, v) => ({
-      sku: plain(p.body_html).split(/Style Code:?/)[1], colorName: optionOf(p, v, /colou?r/i), fabricOnly: true })) },
+    // 제목 'RICK OWENS - Leather Shoes - Minimal Sneak - AW25 - 911 BLACK/MILK/MILK'는 시즌·색상 바로 앞 조각이 이름
+    collect: () => shopify('https://www.machine-a.com', ['designer-rick-owens'], (p, v) => {
+      const parts = p.title.split(/\s+-\s*|\s*-\s+/);
+      const at = parts.findIndex((x) => /^((AW|SS|FW)\d{2}|\d)/.test(x));
+      return { sku: plain(p.body_html).split(/Style Code:?/)[1], colorName: optionOf(p, v, /colou?r/i), fabricOnly: true, name: at > 0 ? parts[at - 1] : p.title };
+    }) },
   { id: 'cherry', name: 'cherry fukuoka', where: '일본', currency: 'KRW', home: 'https://cherry-fukuoka.com/collections/rick-owens',
     collect: () => shopify('https://cherry-fukuoka.com', ['rick-owens'], (p, v) => ({ sku: v.sku })) }, // 'RR02F4736NBFO 009'
   { id: 'amanojak', name: 'amanojak.', where: '일본', currency: 'KRW', home: 'https://www.amanojak.jp/collections/rick-owens',
@@ -287,6 +293,21 @@ export const STORES = [
       sku: plain(p.body_html).match(/ITEM CODE\s+([A-Z0-9]+)/)?.[1], colorName: optionOf(p, v, /カラー|colou?r/i), fabricOnly: true, kind: `${p.title} ${p.tags.join(' ')}` })) },
   { id: '082plus', name: '082+', where: '일본', currency: 'JPY', home: 'https://082plus.com/collections/rick-owens-drkshdw',
     collect: () => shopify('https://082plus.com', ['rick-owens-drkshdw', 'rick-owens', 'rick-owens-x-champion'], (p) => ({ sku: plain(p.body_html) })) }, // 설명 끝의 'DU02F6786 DRK 34'
+  // 일본 국내 배송만 하는 곳 (배대지 필요는 collect()가 매일 판단). 가격은 일본 소비세 10% 포함 엔화
+  { id: 'mou', name: 'mou', where: '일본', currency: 'JPY', home: 'https://mou.co.jp/collections/rick-owens',
+    // 설명의 '品名 RR02F4899NDOEH4'(품번+원단) + 색상 옵션 '2111 NATURAL / MILK'의 앞 번호. 제목 'MAGLIA - SL TURTLE'은 이탈리아어 종류를 떼고
+    collect: () => shopify('https://mou.co.jp', ['rick-owens', 'rick-owens-champion', 'rick-owens-dr-martens'], (p, v) => {
+      const code = plain(p.body_html).match(/品名\s*([A-Z0-9]+)/)?.[1];
+      const [color = '', ...colorName] = String(optionOf(p, v, /colou?r/i) ?? '').trim().split(/\s+/);
+      return code && { sku: `${code} ${color}`, colorName: colorName.join(' '), fabricOnly: true, kind: `${p.title} ${p.tags.join(' ')}`, name: p.title.split(' - ').at(-1) };
+    }) },
+  { id: 'midwest', name: 'MIDWEST', where: '일본', currency: 'JPY', home: 'https://store-midwest.com/collections/rick-owens',
+    // 태그에 품번+원단('RU02E1832LOO')을 단 상품만 (400개 중 70개쯤). 색상은 제목 꼬리 'VINTAGE SNEAKS - DRKDUST/MILK/MILK'로
+    // (색상 옵션은 매장 자체 이름이라 안 씀: DUST 상품이 BROWN, BOSCO가 CHARCOAL)
+    collect: () => shopify('https://store-midwest.com', ['rick-owens', 'drkshdw', 'rick-owens-dr-martens'], (p) => {
+      const [name, colorName = ''] = p.title.split(' - ');
+      return { sku: p.tags.find((t) => parseSku(t)), colorName, fabricOnly: true, name };
+    }) },
 ];
 
 // 자동으로 가격을 못 가져오는 곳과 이유 (사이트 '판매처' 목록에 그대로 나감)
@@ -316,21 +337,44 @@ export const EXCLUDED = [
   ['상장폐지·파산·폐업', ['Farfetch (2024년 1월 뉴욕증시 상장폐지)', '발란 (2026년 2월 파산 선고)', '캐치패션 (폐업)']],
 ];
 
+// 배대지: 한국으로 배송하지 않는 판매처는 그 판매처가 배송하는 나라에 센터가 있는 곳을 안내 (각 공식 사이트 기준, 2026-10 확인)
+// centers: 나라 → 도시·주 (모르면 ''). 릭오웬스 판매처가 있는 나라와 유럽 판매처가 보내 주는 나라만 적음
+export const FORWARDERS = [
+  { name: '몰테일', url: 'https://post.malltail.com', centers: { JP: '', US: 'CA·DE·NJ·OR', GB: '', DE: '', ES: '' } },
+  { name: '오마이집', url: 'https://www.ohmyzip.com', centers: { JP: '후쿠오카', US: 'DE·CA', DE: '' } },
+  { name: '아이포터', url: 'https://www.iporter.com', centers: { JP: '도쿄', US: 'CA·OR·NJ', GB: '', DE: '', FR: '', ES: '' } },
+  { name: 'TENSO', url: 'https://www.tenso.com/kr', centers: { JP: '' } },
+];
+
+// 한국으로 배송하지 않으면 그 판매처가 배송하는 나라 목록 (Shopify meta.json). Shopify가 아니거나 못 받으면 null = 배송하는 것으로 봄
+export async function shipsOnlyTo(home) {
+  try {
+    const { ships_to_countries: ships } = await (await fetch(`${new URL(home).origin}/meta.json`, { headers: { 'user-agent': UA }, signal: AbortSignal.timeout(15000) })).json();
+    return ships?.length && !ships.includes('KR') ? ships : null;
+  } catch {
+    return null;
+  }
+}
+
 // 판매처별로 받기. 한 곳이 실패해도 나머지는 씀. 세일 전 가격(was)은 지금 가격보다 비쌀 때만 남김
+// forward: 배대지가 필요한 판매처 → 그 판매처가 배송하는 나라 중 배대지 센터가 있는 곳 (배송 정책이 바뀌면 다음 날 따라감)
 export async function collect(log = console.log) {
   const offers = [];
   const failed = [];
+  const forward = {};
   for (const store of STORES) {
     try {
       const got = (await store.collect()).filter((o) => o.price > 0); // 가격 0 = 판매처 쪽 가격 미정
       offers.push(...got.map((o) => ({ ...o, store: store.id, currency: o.currency ?? store.currency, stock: o.stock ?? o.sizes.length > 0, was: o.was > o.price ? o.was : 0 })));
-      log(`  ${store.name}: ${got.length}개`);
+      const ships = await shipsOnlyTo(store.home);
+      if (ships) forward[store.id] = ships.filter((c) => FORWARDERS.some((f) => c in f.centers));
+      log(`  ${store.name}: ${got.length}개${ships ? ' · 한국 배송 안 함 (배대지 필요)' : ''}`);
     } catch (e) {
       failed.push(store.id);
       log(`  ${store.name}: 실패 (${e.message})`);
     }
   }
-  return { offers, failed };
+  return { offers, failed, forward };
 }
 
 // 판매처 상품을 공식몰 상품에 붙임. 공식몰에 없는 상품은 품번+색상끼리 묶어 새 상품(extra)으로,
