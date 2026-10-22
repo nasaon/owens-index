@@ -46,7 +46,8 @@ const cleanName = (s) => String(s ?? '').toUpperCase().replace(/[^A-Z]/g, '').re
 // 닥터마틴 협업 UK 사이즈는 공식몰처럼 숫자만 ('UK8(270)'·'6.5 UK M' → 8·6½), mou 신발 '420'·'365' = EU 42·36½
 const LETTER = { '2X': 'XXL', '2XL': 'XXL', '3X': 'XXXL', '3XL': 'XXXL', LGE: 'L', MED: 'M', SML: 'S', XSM: 'XS' };
 export function cleanSize(s) {
-  let t = String(s ?? '').replace(/^[a-z]+_/, '').replace(/^size\s+/i, '').replace(/^(EU|IT|FR|UK)(\s+|(?=\d))|^US\s+(?=(X{0,2}S|M|X{0,3}L)$)/i, '')
+  // LN-CC 'EU - 44'·'IT - 48': 줄표를 남기면 아래 '-구매가능' 꼬리 지우기에 사이즈까지 지워져 전부 UNI가 됐음 (2026-10-22)
+  let t = String(s ?? '').replace(/^([A-Z]{2})\s+-\s+/i, '$1 ').replace(/^[a-z]+_/, '').replace(/^size\s+/i, '').replace(/^(EU|IT|FR|UK)(\s+|(?=\d))|^US\s+(?=(X{0,2}S|M|X{0,3}L)$)/i, '')
     .replace(/-(?!\d).*$/, '').replace(/\s+[/|]\s+.*$/, '').replace(/\s+UK\s+[MW]$/i, '').trim();
   const us = t.match(/^(MENS|WOMENS)\s+(\d+)([.,]5|½)?$/i);
   if (us) t = `${Number(us[2]) + (/^w/i.test(us[1]) ? 30 : 33)}${us[3] ? '½' : ''}`;

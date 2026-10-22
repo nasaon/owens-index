@@ -22,6 +22,7 @@ assert.deepEqual(['Size EU 52', 'wshoeseu_EU 36', 'wrtwstd_S', '40-구매가능(
 assert.deepEqual(['Size OS', 'Size US L', 'Size 31', '6,5', undefined, 'O/S'].map(cleanSize), ['UNI', 'L', '31', '6½', 'UNI', 'UNI']);
 assert.deepEqual(['2X', 'LGE', 'IT 50 / US 32', '41 | 8', '50-52', 'MENS 9', 'WOMENS 8½', 'MENS 9,5'].map(cleanSize), ['XXL', 'L', '50', '41', '50-52', '42', '38½', '42½']);
 assert.deepEqual(['UK 6(約25cm相当)', '41(約26cm相当)'].map(cleanSize), ['6', '41']); // amanojak.
+assert.deepEqual(['EU - 44', 'IT - 48', 'US - L', 'EU - 39.5'].map(cleanSize), ['44', '48', 'L', '39½']); // LN-CC
 assert.deepEqual(['UK8(270)', 'UK9.5(285)', 'UK7', '6.5 UK M', '420', '365', '-', 'FREE'].map(cleanSize), ['8', '9½', '7', '6½', '42', '36½', 'UNI', 'UNI']); // mou·082+·MIDWEST
 
 // 공식몰에 없는 상품의 분류·시즌
