@@ -22,6 +22,12 @@ console.log(`\n=== ${new Date().toISOString()} 매일 갱신`);
 try {
   const before = new Map(stores().map((s) => [s.id, s.count]));
   run('node build.mjs');
+  // 사진으로 찾기 값(public/vec.bin): 새 상품 사진만 계산. 실패해도 갱신·배포는 계속 (어제 값으로 검색됨)
+  try {
+    run('node vectors.mjs');
+  } catch (e) {
+    await notify(`⚠️ [OWENS INDEX] 사진 검색 값 갱신 실패\n${e.message.slice(0, 300)}`);
+  }
   // 판매처가 사이트 구조를 바꾸면 오류 없이 상품 수만 확 줄 수 있음 → 실패했거나 전날의 절반 아래로 줄면 알림
   const odd = stores().filter((s) => s.count === 0 || (before.get(s.id) >= 10 && s.count < before.get(s.id) / 2))
     .map((s) => `${s.name}: ${before.get(s.id) ?? '?'}개 → ${s.count}개`);

@@ -9,3 +9,6 @@ daily.log
 bot.log
 watch.json
 public/i/
+
+# 사진으로 찾기 값: vectors.mjs가 매일 만듦 (배포는 작업 폴더째라 커밋 없이 올라감)
+public/vec.*

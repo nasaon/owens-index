@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>OWENS INDEX</title>
+<title>OWENS INDEX · 릭오웬스 최저가·재고 비교</title>
 <meta name="description" content="릭오웬스 전 상품을 공식몰과 판매처 여러 곳의 재고·최저가까지 한눈에 보는 비공식 인덱스.">
 <meta name="theme-color" content="#000000">
 <meta property="og:type" content="website">
@@ -106,6 +106,14 @@
   select.chip option { background: #111; color: var(--fg); }
   .sep { flex: none; width: 1px; height: 18px; background: var(--dim); }
   .count { font-size: 14px; color: var(--mute); margin: 22px 0 0; }
+  /* 검색창 안 오른쪽 카메라: 사진으로 찾기 (검색창 폭을 줄이지 않게) */
+  .searchbox { position: relative; flex: 1; min-width: 0; display: flex; }
+  .searchbox .search { padding-right: 44px; }
+  #photoBtn { position: absolute; right: 4px; top: 50%; transform: translateY(-50%); display: flex; padding: 6px 10px; border: 0; border-radius: 999px; background: none; color: var(--mute); cursor: pointer; transition: color .3s; }
+  #photoBtn:hover { color: var(--fg); }
+  .photo { display: flex; align-items: center; gap: 12px; margin-top: 18px; font-size: 14px; line-height: 1.5; color: var(--mute); }
+  .photo img { flex: none; width: 56px; height: 56px; object-fit: cover; border-radius: 10px; background: #161617; }
+  .photo span { flex: 1; }
 
   .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(calc(50% - 8px), 236px), 1fr)); gap: 36px 16px; margin-top: 18px; }
   /* align-self: 버튼은 내용을 세로 가운데로 두어서, 같은 줄 옆 카드 이름이 두 줄이면 사진이 아래로 처짐 */
@@ -317,7 +325,8 @@
   .fields { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-top: 18px; }
   .fields label { display: grid; gap: 6px; font-size: 13px; color: var(--mute); }
   .fields .wide { grid-column: 1 / -1; }
-  .fields input, .fields select { width: 100%; padding: 10px 12px; border: 1px solid var(--dim); border-radius: 10px; background: #161617; color: var(--fg); font-size: 16px; }
+  .fields textarea { resize: vertical; font: inherit; line-height: 1.6; }
+  .fields input, .fields select, .fields textarea { width: 100%; padding: 10px 12px; border: 1px solid var(--dim); border-radius: 10px; background: #161617; color: var(--fg); font-size: 16px; }
   .find { display: flex; gap: 8px; }
   .results { display: grid; gap: 6px; padding: 0; list-style: none; }
   .results button { width: 100%; padding: 10px 12px; border: 1px solid var(--dim); border-radius: 10px; background: none; color: var(--fg); font-size: 14px; line-height: 1.5; text-align: left; cursor: pointer; }
@@ -341,6 +350,7 @@
     <a href="#saved" data-view="saved">관심<sup id="likeCount"></sup></a>
     <a href="#stores" data-view="stores">판매처</a>
     <a href="#archive" data-view="archive">아카이브</a>
+    <a href="#ask" id="askBtn">요청</a>
   </nav>
 </header>
 
@@ -360,7 +370,11 @@
   <section id="catalog">
     <div class="toolbar">
       <div class="bar">
-        <input class="search" id="q" type="search" placeholder="이름·품번 검색" aria-label="검색" autocomplete="off">
+        <span class="searchbox">
+          <input class="search" id="q" type="search" placeholder="이름·품번 검색" aria-label="검색" autocomplete="off">
+          <button id="photoBtn" aria-label="사진으로 비슷한 상품 찾기" title="사진으로 찾기"><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z"/><circle cx="12" cy="13" r="3.5"/></svg></button>
+          <input type="file" id="photoFile" accept="image/*" hidden>
+        </span>
         <button class="chip" id="filterBtn" aria-expanded="false" aria-controls="filters">필터</button>
         <select class="chip" id="sort" aria-label="정렬">
           <option value="new">신상품순</option>
@@ -388,6 +402,7 @@
         <button class="chip" id="reset" hidden>초기화</button>
       </div>
     </div>
+    <div class="photo" id="photoBar" hidden><img id="photoThumb" alt="올린 사진"><span id="photoMsg" role="status"></span><button class="chip" id="photoClear">사진 지우기</button></div>
     <p class="count" id="count" aria-live="polite"></p>
     <div class="grid" id="grid"></div>
     <div class="more" id="more"></div>
@@ -578,6 +593,20 @@
     <p class="fine" id="placeMsg" role="status"></p>
     <p class="fine">위치 검색 © <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener">OpenStreetMap</a> contributors</p>
     <div class="acts"><button class="buy" type="submit">제보 보내기</button><button class="chip" type="button" id="placeClose">닫기</button></div>
+  </form>
+</dialog>
+
+<dialog class="dialog" id="askDialog" aria-labelledby="askTitle">
+  <form id="askForm" novalidate>
+    <h3 id="askTitle" tabindex="-1" autofocus>요청사항</h3>
+    <p class="note">바라는 기능, 고칠 점, 비교했으면 하는 판매처 등 무엇이든 적어 주세요. 운영자만 읽어요.</p>
+    <div class="fields">
+      <label class="wide">내용<textarea name="text" maxlength="1000" rows="6" placeholder="예: ○○ 판매처도 비교해 주세요"></textarea></label>
+      <label class="wide">답장받을 곳 (선택)<input name="contact" maxlength="100" placeholder="이메일이나 인스타그램 아이디"></label>
+      <input name="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
+    </div>
+    <p class="fine" id="askMsg" role="status"></p>
+    <div class="acts"><button class="buy" type="submit">보내기</button><button class="chip" type="button" id="askClose">닫기</button></div>
   </form>
 </dialog>
 
@@ -1102,6 +1131,7 @@
   };
   let list = [];
   let shown = 0;
+  let photo = null; // 사진으로 찾기: 상품 id → 올린 사진과 비슷한 정도 (아래 photoFile)
   function render() {
     const terms = queryTerms(state.q.trim());
     const base = DATA.items.filter((it) =>
@@ -1123,11 +1153,11 @@
     $('#size').innerHTML = options(sizes, '사이즈 전체');
     $('#size').value = state.size;
     list = state.size ? base.filter((it) => (state.stock ? it.avail : it.all).has(state.size)) : base;
-    list.sort(SORTS[state.sort]);
+    list.sort(photo ? (a, b) => (photo.get(b.id) ?? -9) - (photo.get(a.id) ?? -9) : SORTS[state.sort]);
     $('#grid').innerHTML = list.length ? '' : '<p class="empty">조건에 맞는 상품이 없어요.<br>필터를 줄이거나 초기화해 보세요.</p>';
     shown = 0;
     more();
-    $('#count').textContent = `${fmt.format(list.length)}개`;
+    $('#count').textContent = `${photo ? '사진과 비슷한 순 · ' : ''}${fmt.format(list.length)}개`;
   }
   function more() {
     const frag = document.createDocumentFragment();
@@ -1136,6 +1166,77 @@
     $('#grid').append(frag);
   }
   new IntersectionObserver((e) => { if (e[0].isIntersecting && shown < list.length) more(); }, { rootMargin: '1200px' }).observe($('#more'));
+
+  // 사진으로 찾기 (2026-10-22): 올린 사진과 비슷한 순으로 정렬, 필터는 그대로. 사진은 이 브라우저 안에서만 분석하고 어디에도 보내지 않음
+  // 모델 MobileCLIP-S0 fp16(약 23MB, 처음 한 번 받으면 브라우저가 저장). 상품 사진 값은 매일 vectors.mjs가 같은 모델로 미리 계산(vec.bin)
+  let clip = null;
+  const sayPhoto = (t) => { $('#photoMsg').textContent = t; };
+  const loadClip = async () => {
+    const T = await import('https://cdn.jsdelivr.net/npm/@huggingface/transformers@4.3.1');
+    T.env.allowLocalModels = false;
+    const progress_callback = (p) => { if (p.status === 'progress' && p.file.endsWith('.onnx')) sayPhoto(`처음 한 번만 사진 분석 모델을 받아요 (약 23MB) · ${Math.round(p.progress)}%`); };
+    const [processor, model, meta, buf] = await Promise.all([
+      T.AutoProcessor.from_pretrained('Xenova/mobileclip_s0'),
+      T.CLIPVisionModelWithProjection.from_pretrained('Xenova/mobileclip_s0', { dtype: 'fp16', device: 'wasm', progress_callback }),
+      fetch('vec.json').then((r) => r.json()),
+      fetch('vec.bin').then((r) => r.arrayBuffer()),
+    ]);
+    return { T, processor, model, meta, buf };
+  };
+  $('#photoBtn').onclick = () => $('#photoFile').click();
+  $('#photoClear').onclick = () => { photo = null; $('#photoBar').hidden = true; $('#photoFile').value = ''; render(); };
+  $('#photoFile').onchange = async () => {
+    const file = $('#photoFile').files[0];
+    if (!file) return;
+    $('#photoThumb').src = URL.createObjectURL(file);
+    $('#photoBar').hidden = false;
+    sayPhoto('사진 분석 준비 중…');
+    try {
+      clip ??= loadClip().catch((e) => { clip = null; throw e; });
+      const { T, processor, model, meta, buf } = await clip;
+      sayPhoto('사진 분석 중…');
+      const { image_embeds } = await model(await processor(await T.RawImage.fromBlob(file)));
+      const q = image_embeds.normalize(2, -1).data;
+      // vec.bin: 줄마다 배율(Float32) n개 + 줄(Int8) n×dim. 내적 = 비슷한 정도
+      const n = meta.ids.length;
+      const scale = new Float32Array(buf, 0, n);
+      const rows = new Int8Array(buf, n * 4);
+      photo = new Map(meta.ids.map((id, r) => {
+        let s = 0;
+        for (let k = 0, o = r * meta.dim; k < meta.dim; k++) s += rows[o + k] * q[k];
+        return [id, s * scale[r]];
+      }));
+      sayPhoto(state.stock ? '비슷한 순이에요. 품절 상품까지 보려면 필터에서 ‘재고 있는 것만’을 꺼 주세요.' : '비슷한 순이에요.');
+      render();
+      scrollTo({ top: $('#catalog').offsetTop, behavior: 'instant' });
+    } catch {
+      sayPhoto('사진을 분석하지 못했어요. 다른 사진으로 해 보거나 새로고침해 주세요.');
+    }
+  };
+
+  // 요청사항: 운영자 텔레그램으로 바로 감 (functions/api/feedback.js). 공개되지 않음
+  $('#askBtn').onclick = (e) => {
+    e.preventDefault();
+    $('#askForm').reset();
+    $('#askMsg').textContent = '';
+    $('#askDialog').showModal();
+  };
+  $('#askClose').onclick = () => $('#askDialog').close();
+  $('#askForm').onsubmit = async (e) => {
+    e.preventDefault();
+    const f = e.target.elements;
+    if (f.text.value.trim().length < 2) return ($('#askMsg').textContent = '내용을 적어 주세요.');
+    const button = e.target.querySelector('[type="submit"]');
+    button.disabled = true;
+    $('#askMsg').textContent = '보내는 중…';
+    const body = { text: f.text.value, contact: f.contact.value, website: f.website.value };
+    const res = await fetch('/api/feedback', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) }).catch(() => null);
+    const data = await res?.json().catch(() => ({}));
+    button.disabled = false;
+    if (!res?.ok) return ($('#askMsg').textContent = data?.error ?? '보내지 못했어요. 조금 뒤에 다시 해 주세요.');
+    $('#askMsg').textContent = '고마워요! 운영자에게 바로 전달됐어요.';
+    setTimeout(() => $('#askDialog').close(), 1800);
+  };
 
   // note: 관심 상품 화면에서 '담을 때보다 내림' 같은 한 줄
   function card(it, i, note = '') {

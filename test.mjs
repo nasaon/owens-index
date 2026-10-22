@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { offersFor, sizeKey } from './bot.mjs';
 import { onRequestPost } from './functions/api/places.js';
+import { onRequestPost as feedback } from './functions/api/feedback.js';
 import { bestPrice, keepAdded, track } from './publish.mjs';
 import { cleanSize, fetchRetry, fromCode, kindOf, match, normColor, parseSku, shipsOnlyTo } from './stores.mjs';
 
@@ -114,4 +115,13 @@ assert.equal(await post({ ...shop, website: 'spam' }), 201);
 assert.equal(saved.length, 0);
 assert.equal(await post({ ...shop, kind: 'toString', url: 'javascript:alert(1)' }), 201);
 assert.deepEqual([saved[0][1], saved[0][7]], ['other', '']);
+
+// 요청사항 API: 빈 내용은 거르고, 봇 칸은 저장 없이 성공인 척, 줄바꿈은 살리고 1000자에서 자름
+const ask = async (body) => (await feedback({ request: new Request('https://x/api/feedback', { method: 'POST', body: JSON.stringify(body) }), env })).status;
+saved.length = 0;
+assert.deepEqual(await Promise.all([null, { text: ' ' }, { text: 1 }].map(ask)), [400, 400, 400]);
+assert.equal(await ask({ text: '판매처 추가해 주세요', website: 'spam' }), 201);
+assert.equal(saved.length, 0);
+assert.equal(await ask({ text: ` 첫 줄\n둘째 줄${'가'.repeat(2000)}`, contact: ' @me  ' }), 201);
+assert.deepEqual([saved[0][0].slice(0, 8), saved[0][0].length, saved[0][1]], ['첫 줄\n둘째 줄', 1000, '@me']);
 console.log('자체 점검 통과');
